@@ -60,6 +60,7 @@ Artisan::command('db:import-sqlite', function () {
     $tables = [
         'tours', 'agencies', 'users', 'price_sources', 'price_histories', 'price_alerts',
         'tour_page_views', 'outbound_clicks', 'agency_credit_transactions',
+        'search_misses',
     ];
     foreach ($tables as $table) {
         if (! Schema::connection('legacy_sqlite')->hasTable($table) || ! Schema::hasTable($table)) {

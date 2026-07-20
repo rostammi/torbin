@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Agency;
 use App\Models\OutboundClick;
+use App\Models\SearchMiss;
 use App\Models\Tour;
 use App\Models\TourPageView;
 use Illuminate\Http\Request;
@@ -28,6 +29,21 @@ class DashboardController extends Controller
         $tourQuery = Tour::query()->orderBy('title');
         if ($agencyId) {
             $tourQuery->whereHas('priceSources', fn ($query) => $query->where('agency_id', $agencyId));
+        }
+
+        $tourQuery->withMin([
+            'priceSources as public_minimum_price' => fn ($query) => $query
+                ->where('is_active', true)
+                ->funded()
+                ->where('latest_price', '>', 0),
+        ], 'latest_price');
+        if ($agencyId) {
+            $tourQuery->withMin([
+                'priceSources as agency_price' => fn ($query) => $query
+                    ->where('agency_id', $agencyId)
+                    ->where('is_active', true)
+                    ->where('latest_price', '>', 0),
+            ], 'latest_price');
         }
 
         $tours = $tourQuery
@@ -55,6 +71,16 @@ class DashboardController extends Controller
             ->when($since, fn ($query) => $query->where('clicked_at', '>=', $since));
         $clicksTotal = (clone $clicksQuery)->count();
         $costTotal = (int) (clone $clicksQuery)->sum('charged_amount');
+        $potentialKeywords = $user->isAdmin()
+            ? SearchMiss::query()
+                ->selectRaw('normalized_query, normalized_query as keyword, COUNT(*) as searches_count, COUNT(DISTINCT ip_hash) as visitors_count, MAX(searched_at) as last_searched_at')
+                ->when($since, fn ($query) => $query->where('searched_at', '>=', $since))
+                ->groupBy('normalized_query')
+                ->orderByDesc('searches_count')
+                ->orderByDesc('last_searched_at')
+                ->limit(20)
+                ->get()
+            : collect();
 
         return view('admin.dashboard', [
             'tours' => $tours,
@@ -65,6 +91,7 @@ class DashboardController extends Controller
             'clicksTotal' => $clicksTotal,
             'costTotal' => $costTotal,
             'conversionTotal' => $viewsTotal > 0 ? ($clicksTotal / $viewsTotal) * 100 : 0,
+            'potentialKeywords' => $potentialKeywords,
         ]);
     }
 

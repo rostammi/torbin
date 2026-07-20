@@ -69,4 +69,36 @@ class PublicToursTest extends TestCase
             ->assertSee('9,000,000')
             ->assertSee('8,500,000');
     }
+
+    public function test_tour_page_has_one_trend_using_the_daily_minimum_across_agencies(): void
+    {
+        $tour = Tour::create([
+            'title' => 'تور قشم', 'slug' => 'qeshm-trend', 'description' => 'توضیحات', 'is_active' => true,
+        ]);
+        $first = $tour->priceSources()->create([
+            'provider_name' => 'آژانس اول', 'source_url' => 'https://example.com/one',
+            'extraction_type' => 'manual', 'latest_price' => 7_000_000, 'is_active' => true,
+        ]);
+        $second = $tour->priceSources()->create([
+            'provider_name' => 'آژانس دوم', 'source_url' => 'https://example.com/two',
+            'extraction_type' => 'manual', 'latest_price' => 9_000_000, 'is_active' => true,
+        ]);
+        $first->agency->update(['balance' => 100_000]);
+        $second->agency->update(['balance' => 100_000]);
+        $first->history()->createMany([
+            ['price' => 10_000_000, 'is_available' => true, 'observed_at' => now()->subDay()],
+            ['price' => 7_000_000, 'is_available' => true, 'observed_at' => now()],
+        ]);
+        $second->history()->createMany([
+            ['price' => 8_000_000, 'is_available' => true, 'observed_at' => now()->subDay()],
+            ['price' => 9_000_000, 'is_available' => true, 'observed_at' => now()],
+        ]);
+
+        $this->get('/tours/qeshm-trend')
+            ->assertOk()
+            ->assertViewHas('priceTrend', fn ($trend) => $trend->pluck('price')->all() === [8_000_000, 7_000_000])
+            ->assertSee('روند کمترین قیمت تور')
+            ->assertSee('آژانس دوم')
+            ->assertSee('آژانس اول');
+    }
 }

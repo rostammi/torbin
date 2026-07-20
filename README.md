@@ -70,6 +70,8 @@ Purchase buttons use the internal `/go/{source}` route. Each request is recorded
 
 `/admin/dashboard` is shared by administrators and agency users. It reports tour-page views, successful outbound purchase clicks, click conversion rate, and click spend per tour for selectable time ranges. Administrators can view all agencies or filter one agency; agency users are restricted to their own tours and metrics and receive HTTP 403 for tour, source, billing, and account-management routes. Create or update an agency login from **Admin → Agencies & Credit → Dashboard access**.
 
+The administrator dashboard also lists potential tour keywords: submitted searches with zero results, grouped by normalized Persian spelling and whitespace. It shows search frequency, approximate unique visitors, and the most recent search within the selected dashboard period. Autocomplete requests are intentionally excluded so partially typed phrases do not pollute demand data.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

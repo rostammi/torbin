@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Search\SearchMissTracker;
 use App\Services\Search\TourSearch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -9,12 +10,16 @@ use Illuminate\View\View;
 
 class SearchController extends Controller
 {
-    public function index(Request $request, TourSearch $search): View
+    public function index(Request $request, TourSearch $search, SearchMissTracker $misses): View
     {
         $term = trim($request->string('q')->toString());
         $tours = mb_strlen($term) >= 3
             ? $search->query($term)->paginate(12)->withQueryString()
             : null;
+
+        if ($tours && $tours->total() === 0 && $tours->currentPage() === 1) {
+            $misses->track($term, $request);
+        }
 
         return view('search.index', compact('term', 'tours'));
     }

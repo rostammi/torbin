@@ -17,6 +17,15 @@ class AgencyDashboardTest extends TestCase
     {
         [$agency, $tour, $source] = $this->agencyTour('آژانس اول', 'شیراز');
         [$otherAgency, $otherTour, $otherSource] = $this->agencyTour('آژانس دوم', 'کیش');
+        $competingSource = $tour->priceSources()->create([
+            'provider_name' => $otherAgency->name,
+            'source_url' => 'https://example.com/cheaper',
+            'buy_url' => 'https://example.com/cheaper',
+            'extraction_type' => 'manual',
+            'latest_price' => 7_000_000,
+            'is_active' => true,
+        ]);
+        $competingSource->agency->update(['balance' => 100_000]);
         $user = User::factory()->create(['role' => 'agency', 'agency_id' => $agency->id]);
 
         foreach (range(1, 20) as $index) {
@@ -34,6 +43,10 @@ class AgencyDashboardTest extends TestCase
             ->assertSee('داشبورد آژانس اول')
             ->assertSee('تور شیراز')
             ->assertDontSee('تور کیش')
+            ->assertSee('7,000,000')
+            ->assertSee('8,000,000')
+            ->assertSee('1,000,000')
+            ->assertSee('14.29٪')
             ->assertSee('25.00٪')
             ->assertSee('5,000');
     }
@@ -46,6 +59,8 @@ class AgencyDashboardTest extends TestCase
         $this->actingAs($user)->get(route('admin.tours.index'))->assertForbidden();
         $this->actingAs($user)->get(route('admin.agencies.index'))->assertForbidden();
         $this->actingAs($user)->get(route('admin.dashboard'))->assertOk();
+        $this->actingAs($user)->get(route('admin.dashboard'))
+            ->assertDontSee('کیوردهای دارای پتانسیل اجرای تور');
     }
 
     public function test_agency_login_redirects_to_shared_dashboard(): void

@@ -12,7 +12,7 @@ use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+Route::get('/search', [SearchController::class, 'index'])->middleware('throttle:30,1')->name('search.index');
 Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->middleware('throttle:60,1')->name('search.suggestions');
 Route::get('/tours/{tour}', [HomeController::class, 'show'])->name('tours.show');
 Route::get('/go/{source}', OutboundClickController::class)->middleware('throttle:30,1')->name('outbound.click');

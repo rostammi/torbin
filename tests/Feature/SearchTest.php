@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\SearchMiss;
 use App\Models\Tour;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -52,6 +54,32 @@ class SearchTest extends TestCase
             ->assertOk()
             ->assertSee('id="site-search"', false)
             ->assertSee(route('search.suggestions'), false);
+    }
+
+    public function test_searches_without_results_are_grouped_as_potential_keywords_for_admin(): void
+    {
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+            ->get(route('search.index', ['q' => 'تور مریخ']))->assertOk();
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.11'])
+            ->get(route('search.index', ['q' => 'تور‌مریخ']))->assertOk();
+
+        $this->assertSame(2, SearchMiss::count());
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('admin.dashboard', ['period' => 'all']))
+            ->assertOk()
+            ->assertSee('کیوردهای دارای پتانسیل اجرای تور')
+            ->assertSee('تور مریخ')
+            ->assertSeeInOrder(['تور مریخ', '2', '2']);
+    }
+
+    public function test_successful_search_is_not_recorded_as_a_miss(): void
+    {
+        $this->tour('تور شیراز', 'successful-shiraz', 'توضیحات');
+
+        $this->get(route('search.index', ['q' => 'شیراز']))->assertOk();
+
+        $this->assertDatabaseCount('search_misses', 0);
     }
 
     private function tour(string $title, string $slug, string $description, string $agency = 'آژانس نمونه', int $balance = 100_000): Tour

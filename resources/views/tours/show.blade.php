@@ -128,12 +128,8 @@
     <section class="container history-section">
         <div class="section-head">
             <div><span class="eyebrow">روند تغییرات</span><h2>سابقه قیمت این تور</h2></div>
-            <span class="muted">۳۰ بررسی اخیر هر سایت</span>
+            <span class="muted">کمترین قیمت در ۳۰ روز دارای داده اخیر</span>
         </div>
-        <div class="history-grid">
-            @foreach($tour->priceSources as $source)
-                @include('tours._history', ['source' => $source])
-            @endforeach
-        </div>
+        @include('tours._trend', ['trend' => $priceTrend])
     </section>
 @endsection
