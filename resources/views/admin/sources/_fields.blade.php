@@ -18,3 +18,4 @@
     <label>واحد<select name="currency"><option @selected($source->currency !== 'ریال')>تومان</option><option @selected($source->currency === 'ریال')>ریال</option></select></label>
 </div>
 <label class="check-label"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $source->exists ? $source->is_active : true))> منبع فعال باشد</label>
+<label class="check-label"><input type="checkbox" name="is_featured" value="1" @checked(old('is_featured', $source->is_featured))> این پیشنهاد «پیشنهاد ویژه» باشد</label>

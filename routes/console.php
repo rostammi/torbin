@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\Agency;
 use App\Models\PriceSource;
+use App\Models\Tour;
+use App\Services\Alerts\PriceAlertNotifier;
 use App\Services\PriceCrawler;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -12,7 +15,7 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('prices:crawl {tour?}', function (PriceCrawler $crawler) {
+Artisan::command('prices:crawl {tour?}', function (PriceCrawler $crawler, PriceAlertNotifier $alerts) {
     $query = PriceSource::query()->where('is_active', true)->where('extraction_type', '!=', 'manual');
     if ($tour = $this->argument('tour')) {
         $query->where('tour_id', $tour);
@@ -20,10 +23,24 @@ Artisan::command('prices:crawl {tour?}', function (PriceCrawler $crawler) {
 
     $sources = $query->get();
     $success = $sources->filter(fn ($source) => $crawler->crawl($source))->count();
-    $this->info("Crawled {$sources->count()} sources; {$success} succeeded.");
+    $notified = $sources->pluck('tour_id')->unique()->sum(fn ($tourId) => $alerts->notifyForTour(Tour::findOrFail($tourId)));
+    $this->info("Crawled {$sources->count()} sources; {$success} succeeded; {$notified} alerts sent.");
 })->purpose('Crawl active tour price sources');
 
 Schedule::command('prices:crawl')->hourly()->withoutOverlapping();
+
+Artisan::command('content:crawl {tour?}', function (PriceCrawler $crawler) {
+    $query = PriceSource::query()->where('is_active', true);
+    if ($tour = $this->argument('tour')) {
+        $query->where('tour_id', $tour);
+    }
+
+    $sources = $query->get();
+    $success = $sources->filter(fn ($source) => $crawler->crawlContent($source, true))->count();
+    $this->info("Crawled content for {$sources->count()} sources; {$success} succeeded.");
+})->purpose('Extract and compile useful tour topics from provider pages');
+
+Schedule::command('content:crawl')->dailyAt('02:30')->withoutOverlapping();
 
 Artisan::command('db:import-sqlite', function () {
     $targetDriver = DB::connection()->getDriverName();
@@ -40,7 +57,10 @@ Artisan::command('db:import-sqlite', function () {
         return 1;
     }
 
-    $tables = ['users', 'tours', 'price_sources', 'price_histories'];
+    $tables = [
+        'users', 'tours', 'agencies', 'price_sources', 'price_histories', 'price_alerts',
+        'outbound_clicks', 'agency_credit_transactions',
+    ];
     foreach ($tables as $table) {
         if (! Schema::connection('legacy_sqlite')->hasTable($table) || ! Schema::hasTable($table)) {
             $this->warn("جدول {$table} در مبدا یا مقصد وجود ندارد؛ رد شد.");
@@ -62,6 +82,11 @@ Artisan::command('db:import-sqlite', function () {
 
         $this->info("{$table}: {$imported} رکورد منتقل شد.");
     }
+
+    PriceSource::query()->whereNull('agency_id')->each(function (PriceSource $source) {
+        $source->agency_id = Agency::firstOrCreate(['name' => $source->provider_name])->id;
+        $source->save();
+    });
 
     $this->newLine();
     $this->info('انتقال داده‌های SQLite به MySQL کامل شد.');

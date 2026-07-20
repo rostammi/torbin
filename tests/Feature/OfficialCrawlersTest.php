@@ -57,6 +57,20 @@ class OfficialCrawlersTest extends TestCase
         $this->assertSame(9_000_000, $source->fresh()->latest_price);
     }
 
+    public function test_content_enrichment_can_succeed_when_the_price_api_fails(): void
+    {
+        Http::fake([
+            'ws.alibaba.ir/*' => Http::response([], 503),
+            '93.184.216.34/*' => Http::response('<main><h2>جاهای دیدنی شیراز</h2></main>', 200, ['Content-Type' => 'text/html']),
+        ]);
+        $source = $this->source('alibaba', 'https://93.184.216.34/tour/iran-tehran/iran-shiraz?rooms=2');
+
+        $this->assertFalse(app(PriceCrawler::class)->crawl($source));
+        $this->assertSame('failed', $source->fresh()->last_status);
+        $this->assertSame('جاهای دیدنی شیراز', $source->fresh()->content_insights[0]['title']);
+        $this->assertSame('جاهای دیدنی شیراز', $source->tour->fresh()->auto_content['topics'][0]['title']);
+    }
+
     public function test_safarmarket_combines_both_apis_and_normalizes_their_units(): void
     {
         Http::fake([

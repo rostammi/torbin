@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tour;
+use App\Services\Alerts\PriceAlertNotifier;
 use App\Services\PriceCrawler;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,12 +59,21 @@ class TourController extends Controller
         return redirect()->route('admin.tours.index')->with('success', 'تور حذف شد.');
     }
 
-    public function crawl(Tour $tour, PriceCrawler $crawler): RedirectResponse
+    public function crawl(Tour $tour, PriceCrawler $crawler, PriceAlertNotifier $alerts): RedirectResponse
     {
         $sources = $tour->priceSources()->where('is_active', true)->where('extraction_type', '!=', 'manual')->get();
         $success = $sources->filter(fn ($source) => $crawler->crawl($source))->count();
+        $notified = $alerts->notifyForTour($tour);
 
-        return back()->with('success', "بررسی قیمت‌ها تمام شد: {$success} منبع از {$sources->count()} منبع موفق بود.");
+        return back()->with('success', "بررسی قیمت‌ها تمام شد: {$success} منبع از {$sources->count()} منبع موفق و {$notified} هشدار ارسال شد.");
+    }
+
+    public function crawlContent(Tour $tour, PriceCrawler $crawler): RedirectResponse
+    {
+        $sources = $tour->priceSources()->where('is_active', true)->get();
+        $success = $sources->filter(fn ($source) => $crawler->crawlContent($source, true))->count();
+
+        return back()->with('success', "بررسی محتوا تمام شد: {$success} منبع از {$sources->count()} منبع موفق بود.");
     }
 
     private function validated(Request $request, ?Tour $tour = null): array

@@ -42,6 +42,30 @@ php artisan serve
 
 Every successful crawl (including an unavailable result with price zero) creates a price-history snapshot. The tour page displays up to 30 recent snapshots per provider. Ratings are only labelled as user ratings when the provider returns a review score; hotel classification is stored and displayed separately as hotel stars.
 
+Provider-page content is checked during price crawls and by the daily `content:crawl` command. Relevant headings are deduplicated and compiled into a source-attributed travel guide without republishing source paragraphs. Ensure Laravel's scheduler is running in production:
+
+```bash
+php artisan schedule:work
+```
+
+## Price-drop SMS alerts
+
+Visitors can subscribe from a tour page at its current minimum price. After each complete crawl, an SMS is sent only when the new tour minimum is lower than the subscriber's saved threshold. The threshold is then lowered to prevent duplicate messages. Phone numbers and unsubscribe tokens are encrypted at rest.
+
+The default `SMS_DRIVER=log` writes development messages to `storage/logs/laravel.log`. To send through Kavenegar, configure:
+
+```dotenv
+SMS_DRIVER=kavenegar
+KAVENEGAR_API_KEY=your-api-key
+KAVENEGAR_SENDER=
+```
+
+Alternatively, set `SMS_DRIVER=webhook`, `SMS_WEBHOOK_URL`, and optionally `SMS_WEBHOOK_TOKEN`. The webhook receives JSON with `to` and `message` fields.
+
+## Agency click billing
+
+Purchase buttons use the internal `/go/{source}` route. Each request is recorded before redirecting to the provider. Agencies have a balance and a configurable cost per click, and every charged click creates an immutable ledger entry. Admins can configure click cost and add or subtract credit from **Admin → Agencies & Credit**. When an agency cannot afford its next click, its purchase button is disabled until credit is added. Existing agencies start with zero cost per click, so configure a cost before billing begins.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

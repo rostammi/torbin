@@ -12,12 +12,18 @@ class Tour extends Model
     use HasFactory;
 
     protected $fillable = [
-        'title', 'slug', 'excerpt', 'description', 'cover_image', 'gallery', 'video_url', 'is_active',
+        'title', 'slug', 'excerpt', 'description', 'auto_content', 'auto_content_updated_at',
+        'cover_image', 'gallery', 'video_url', 'is_active',
     ];
 
     protected function casts(): array
     {
-        return ['gallery' => 'array', 'is_active' => 'boolean'];
+        return [
+            'gallery' => 'array',
+            'auto_content' => 'array',
+            'auto_content_updated_at' => 'datetime',
+            'is_active' => 'boolean',
+        ];
     }
 
     public function getRouteKeyName(): string
@@ -30,10 +36,16 @@ class Tour extends Model
         return $this->hasMany(PriceSource::class);
     }
 
+    public function priceAlerts(): HasMany
+    {
+        return $this->hasMany(PriceAlert::class);
+    }
+
     public function activePrices(): HasMany
     {
         return $this->priceSources()
             ->where('is_active', true)
+            ->funded()
             ->whereNotNull('latest_price')
             ->orderByRaw('case when latest_price = 0 then 1 else 0 end')
             ->orderBy('latest_price');

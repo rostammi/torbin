@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\PriceSource;
+use App\Services\Content\TourContentCompiler;
+use App\Services\Content\WebsiteContentExtractor;
 use App\Services\Crawlers\AlibabaCrawler;
 use App\Services\Crawlers\CrawlResult;
 use App\Services\Crawlers\FlytodayCrawler;
@@ -17,6 +19,8 @@ class PriceCrawler
         private readonly AlibabaCrawler $alibaba,
         private readonly FlytodayCrawler $flytoday,
         private readonly SafarmarketCrawler $safarmarket,
+        private readonly WebsiteContentExtractor $contentExtractor,
+        private readonly TourContentCompiler $contentCompiler,
     ) {}
 
     public function crawl(PriceSource $source): bool
@@ -53,6 +57,8 @@ class PriceCrawler
                 'observed_at' => now(),
             ]);
 
+            $this->enrichContent($source->fresh(), $result);
+
             return true;
         } catch (Throwable $exception) {
             $source->update([
@@ -61,9 +67,52 @@ class PriceCrawler
                 'last_error' => mb_substr($exception->getMessage(), 0, 1000),
             ]);
 
+            $this->enrichContent($source->fresh(), new CrawlResult(
+                (int) ($source->latest_price ?? 0),
+                $source->buy_url ?: $source->source_url,
+            ));
+
             report($exception);
 
             return false;
+        }
+    }
+
+    public function crawlContent(PriceSource $source, bool $force = false): bool
+    {
+        $this->enrichContent($source, new CrawlResult(
+            (int) ($source->latest_price ?? 0),
+            $source->buy_url ?: $source->source_url,
+        ), $force);
+
+        return $source->fresh()->content_error === null;
+    }
+
+    private function enrichContent(PriceSource $source, CrawlResult $result, bool $force = false): void
+    {
+        try {
+            $refreshAfter = $source->content_error ? now()->subHours(3) : now()->subDay();
+            if ($force || ! $source->content_checked_at?->greaterThan($refreshAfter)) {
+                $insights = $this->contentExtractor->extract(
+                    $result->buyUrl ?: $source->buy_url ?: $source->source_url,
+                    $source->tour->title,
+                );
+
+                $source->update([
+                    'content_insights' => $insights === [] ? $source->content_insights : $insights,
+                    'content_checked_at' => now(),
+                    'content_error' => null,
+                ]);
+            }
+
+            $this->contentCompiler->refresh($source->tour);
+        } catch (Throwable $exception) {
+            $source->update([
+                'content_checked_at' => now(),
+                'content_error' => mb_substr($exception->getMessage(), 0, 1000),
+            ]);
+
+            report($exception);
         }
     }
 

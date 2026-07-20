@@ -15,6 +15,7 @@
                 <a href="{{ route('home') }}">همه تورها</a>
                 @auth
                     <a href="{{ route('admin.tours.index') }}">مدیریت</a>
+                    <a href="{{ route('admin.agencies.index') }}">آژانس‌ها و اعتبار</a>
                     <form action="{{ route('logout') }}" method="post" class="inline-form">
                         @csrf
                         <button class="link-button" type="submit">خروج</button>

@@ -48,8 +48,9 @@
 
             <div class="price-list">
                 @forelse ($tour->priceSources as $index => $source)
-                    <div class="price-row {{ $loop->first && $source->latest_price > 0 ? 'best-price' : '' }}">
+                    <div class="price-row {{ $loop->first && $source->latest_price > 0 ? 'best-price' : '' }} {{ $source->is_featured ? 'has-featured' : '' }}">
                         @if ($loop->first && $source->latest_price > 0)<span class="best-label">بهترین قیمت</span>@endif
+                        @if ($source->is_featured)<span class="special-offer-badge">پیشنهاد ویژه</span>@endif
                         <div class="provider">
                             <span class="provider-rank">{{ $index + 1 }}</span>
                             <div>
@@ -69,7 +70,11 @@
                             @else
                                 <strong class="unavailable-price">۰ <small>{{ $source->currency }} · بدون تور فعال</small></strong>
                             @endif
-                            <a href="{{ $source->buy_url ?: $source->source_url }}" target="_blank" rel="nofollow sponsored noopener">{{ $source->latest_price > 0 ? 'خرید تور' : 'بررسی سایت' }} ↗</a>
+                            @if(!$source->agency || $source->agency->canAffordClick())
+                                <a href="{{ route('outbound.click', $source) }}" target="_blank" rel="nofollow sponsored noopener">{{ $source->latest_price > 0 ? 'خرید تور' : 'بررسی سایت' }} ↗</a>
+                            @else
+                                <span class="buy-disabled">اعتبار ارائه‌دهنده کافی نیست</span>
+                            @endif
                         </div>
                     </div>
                 @empty
@@ -77,8 +82,48 @@
                 @endforelse
             </div>
             <p class="comparison-note">قیمت‌ها ممکن است در سایت فروشنده تغییر کنند؛ مبلغ نهایی را پیش از خرید بررسی کنید.</p>
+            @php($alertOffer = $tour->priceSources->first(fn ($item) => $item->latest_price > 0))
+            @if($alertOffer)
+                <div class="price-alert-box">
+                    <span class="eyebrow">هنوز گران است؟</span>
+                    <h3>خبرم کن ارزان‌تر شد</h3>
+                    <p>اگر قیمت این تور از {{ number_format($alertOffer->latest_price) }} {{ $alertOffer->currency }} کمتر شد، پیام می‌دهیم.</p>
+                    <form action="{{ route('price-alerts.store', $tour) }}" method="post">
+                        @csrf
+                        <div class="alert-phone-row">
+                            <input type="tel" name="phone" dir="ltr" inputmode="numeric" autocomplete="tel" value="{{ old('phone') }}" placeholder="09123456789" required>
+                            <button class="button" type="submit">فعال‌کردن هشدار</button>
+                        </div>
+                        @error('phone')<small class="field-error">{{ $message }}</small>@enderror
+                        <label class="alert-consent"><input type="checkbox" name="consent" value="1" required> با دریافت پیامک کاهش قیمت و امکان لغو آن موافقم.</label>
+                        @error('consent')<small class="field-error">{{ $message }}</small>@enderror
+                    </form>
+                </div>
+            @endif
         </aside>
     </div>
+
+    @if(data_get($tour->auto_content, 'topics'))
+        <section class="container auto-guide">
+            <div class="section-head">
+                <div><span class="eyebrow">برگرفته از منابع مقایسه‌شده</span><h2>راهنمای تکمیلی {{ $tour->title }}</h2></div>
+                @if($tour->auto_content_updated_at)<span class="muted">به‌روزرسانی {{ $tour->auto_content_updated_at->diffForHumans() }}</span>@endif
+            </div>
+            <p class="auto-guide-intro">موضوعات زیر با بررسی محتوای عمومی سایت‌های ارائه‌دهنده شناسایی شده‌اند. برای جزئیات هر موضوع می‌توانید منبع مرتبط را ببینید.</p>
+            <div class="topic-grid">
+                @foreach(data_get($tour->auto_content, 'topics', []) as $topic)
+                    <article class="topic-card">
+                        <h3>{{ $topic['title'] }}</h3>
+                        <div class="topic-sources">
+                            @foreach($topic['sources'] ?? [] as $contentSource)
+                                <a href="{{ $contentSource['url'] }}" target="_blank" rel="nofollow noopener">{{ $contentSource['name'] }} ↗</a>
+                            @endforeach
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     <section class="container history-section">
         <div class="section-head">
