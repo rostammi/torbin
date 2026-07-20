@@ -42,6 +42,20 @@
                         <button class="button button-secondary" type="submit">ثبت تراکنش</button>
                     </form>
 
+                    @php($agencyAccount = $agency->users->first())
+                    <details class="agency-access">
+                        <summary>{{ $agencyAccount ? 'ویرایش دسترسی داشبورد' : 'ساخت حساب ورود آژانس' }}</summary>
+                        <form method="post" action="{{ route('admin.agencies.access', $agency) }}">
+                            @csrf
+                            <label>ایمیل ورود<input type="email" name="email" value="{{ old('email', $agencyAccount?->email) }}" required></label>
+                            <div class="form-grid">
+                                <label>رمز عبور {{ $agencyAccount ? '(برای عدم تغییر خالی بگذارید)' : '' }}<input type="password" name="password" @required(!$agencyAccount)></label>
+                                <label>تکرار رمز عبور<input type="password" name="password_confirmation" @required(!$agencyAccount)></label>
+                            </div>
+                            <button class="button button-secondary" type="submit">ذخیره دسترسی</button>
+                        </form>
+                    </details>
+
                     @if($agency->creditTransactions->isNotEmpty())
                         <details class="agency-ledger">
                             <summary>۵ تراکنش اخیر</summary>

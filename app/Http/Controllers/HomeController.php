@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tour;
+use App\Services\Analytics\TourViewTracker;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class HomeController extends Controller
@@ -11,17 +13,17 @@ class HomeController extends Controller
     {
         $tours = Tour::query()
             ->published()
-            ->withMin(['priceSources as minimum_price' => fn ($query) => $query->where('is_active', true)->funded()->where('latest_price', '>', 0)], 'latest_price')
-            ->withCount(['priceSources as compared_sources_count' => fn ($query) => $query->where('is_active', true)->funded()->whereNotNull('latest_price')])
+            ->withPublicPricing()
             ->latest()
             ->paginate(12);
 
         return view('home', compact('tours'));
     }
 
-    public function show(Tour $tour): View
+    public function show(Request $request, Tour $tour, TourViewTracker $views): View
     {
         abort_unless($tour->is_active, 404);
+        $views->track($tour, $request);
         $tour->load(['priceSources' => fn ($query) => $query
             ->where('is_active', true)
             ->funded()

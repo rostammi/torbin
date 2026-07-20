@@ -41,6 +41,16 @@ class Tour extends Model
         return $this->hasMany(PriceAlert::class);
     }
 
+    public function pageViews(): HasMany
+    {
+        return $this->hasMany(TourPageView::class);
+    }
+
+    public function outboundClicks(): HasMany
+    {
+        return $this->hasMany(OutboundClick::class);
+    }
+
     public function activePrices(): HasMany
     {
         return $this->priceSources()
@@ -54,5 +64,12 @@ class Tour extends Model
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeWithPublicPricing(Builder $query): Builder
+    {
+        return $query
+            ->withMin(['priceSources as minimum_price' => fn ($source) => $source->where('is_active', true)->funded()->where('latest_price', '>', 0)], 'latest_price')
+            ->withCount(['priceSources as compared_sources_count' => fn ($source) => $source->where('is_active', true)->funded()->whereNotNull('latest_price')]);
     }
 }

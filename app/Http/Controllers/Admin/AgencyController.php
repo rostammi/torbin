@@ -15,7 +15,10 @@ class AgencyController extends Controller
     public function index(): View
     {
         $agencies = Agency::query()
-            ->with(['creditTransactions' => fn ($query) => $query->latest()->limit(5)])
+            ->with([
+                'creditTransactions' => fn ($query) => $query->latest()->limit(5),
+                'users' => fn ($query) => $query->where('role', 'agency')->oldest(),
+            ])
             ->withCount([
                 'priceSources',
                 'clicks',
@@ -49,5 +52,28 @@ class AgencyController extends Controller
         $billing->adjustBalance($agency, $data['amount'], $data['type'], $data['note'] ?? null, $request->user());
 
         return back()->with('success', 'موجودی آژانس و دفتر تراکنش‌ها به‌روزرسانی شد.');
+    }
+
+    public function saveAccess(Request $request, Agency $agency): RedirectResponse
+    {
+        $account = $agency->users()->where('role', 'agency')->first();
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($account)],
+            'password' => [$account ? 'nullable' : 'required', 'nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $values = [
+            'name' => $agency->name,
+            'email' => $data['email'],
+            'role' => 'agency',
+            'agency_id' => $agency->id,
+        ];
+        if (! empty($data['password'])) {
+            $values['password'] = $data['password'];
+        }
+
+        $account ? $account->update($values) : $agency->users()->create($values);
+
+        return back()->with('success', "دسترسی داشبورد {$agency->name} ذخیره شد.");
     }
 }

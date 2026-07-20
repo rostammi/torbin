@@ -29,6 +29,11 @@ class Agency extends Model
         return $this->hasMany(AgencyCreditTransaction::class);
     }
 
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
     public function canAffordClick(): bool
     {
         return $this->cost_per_click === 0 || $this->balance >= $this->cost_per_click;

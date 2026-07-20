@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
         User::updateOrCreate(['email' => 'admin@example.com'], [
             'name' => 'مدیر توربین',
             'password' => Hash::make('password'),
+            'role' => 'admin',
         ]);
 
         $shiraz = Tour::updateOrCreate(['slug' => 'shiraz-tour'], [

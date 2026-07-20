@@ -66,6 +66,10 @@ Alternatively, set `SMS_DRIVER=webhook`, `SMS_WEBHOOK_URL`, and optionally `SMS_
 
 Purchase buttons use the internal `/go/{source}` route. Each request is recorded before redirecting to the provider. Agencies have a balance and a configurable cost per click, and every charged click creates an immutable ledger entry. Admins can configure click cost and add or subtract credit from **Admin → Agencies & Credit**. When an agency cannot afford its next click, its purchase button is disabled until credit is added. Existing agencies start with zero cost per click, so configure a cost before billing begins.
 
+## Admin and agency analytics dashboard
+
+`/admin/dashboard` is shared by administrators and agency users. It reports tour-page views, successful outbound purchase clicks, click conversion rate, and click spend per tour for selectable time ranges. Administrators can view all agencies or filter one agency; agency users are restricted to their own tours and metrics and receive HTTP 403 for tour, source, billing, and account-management routes. Create or update an agency login from **Admin → Agencies & Credit → Dashboard access**.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
