@@ -2,8 +2,10 @@
 
 use App\Models\Agency;
 use App\Models\PriceSource;
+use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Services\Alerts\PriceAlertNotifier;
+use App\Services\Discovery\PopularTourDiscovery;
 use App\Services\PriceCrawler;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -42,6 +44,20 @@ Artisan::command('content:crawl {tour?}', function (PriceCrawler $crawler) {
 
 Schedule::command('content:crawl')->dailyAt('02:30')->withoutOverlapping();
 
+Artisan::command('tours:discover', function (PopularTourDiscovery $discovery) {
+    $run = SyncRun::create(['type' => 'discover_tours', 'started_at' => now()]);
+    try {
+        $result = $discovery->discover();
+        $run->update(['status' => 'success', 'total' => $result['total'], 'successful' => $result['total'], 'details' => $result, 'finished_at' => now()]);
+        $this->info("Discovered {$result['total']} tour suggestions ({$result['trends_received']} Google Trends items received).");
+    } catch (Throwable $exception) {
+        $run->update(['status' => 'failed', 'error' => $exception->getMessage(), 'finished_at' => now()]);
+        throw $exception;
+    }
+})->purpose('Refresh popular tour suggestions from trends and internal demand');
+
+Schedule::command('tours:discover')->dailyAt('01:30')->withoutOverlapping();
+
 Artisan::command('db:import-sqlite', function () {
     $targetDriver = DB::connection()->getDriverName();
     if (! in_array($targetDriver, ['mysql', 'mariadb'], true)) {
@@ -60,7 +76,7 @@ Artisan::command('db:import-sqlite', function () {
     $tables = [
         'tours', 'agencies', 'users', 'price_sources', 'price_histories', 'price_alerts',
         'tour_page_views', 'outbound_clicks', 'agency_credit_transactions',
-        'search_misses',
+        'search_misses', 'tour_suggestions', 'sync_runs',
     ];
     foreach ($tables as $table) {
         if (! Schema::connection('legacy_sqlite')->hasTable($table) || ! Schema::hasTable($table)) {

@@ -24,6 +24,8 @@
                     <a href="{{ route('admin.dashboard') }}">داشبورد</a>
                     @if(auth()->user()->isAdmin())
                         <a href="{{ route('admin.tours.index') }}">مدیریت تورها</a>
+                        <a href="{{ route('admin.suggestions.index') }}">پیشنهاد تورها</a>
+                        <a href="{{ route('admin.sync.index') }}">همگام‌سازی</a>
                         <a href="{{ route('admin.agencies.index') }}">آژانس‌ها و اعتبار</a>
                     @endif
                     <form action="{{ route('logout') }}" method="post" class="inline-form">

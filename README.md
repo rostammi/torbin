@@ -46,7 +46,14 @@ Provider-page content is checked during price crawls and by the daily `content:c
 
 ```bash
 php artisan schedule:work
+php artisan queue:work --timeout=1800
 ```
+
+## Tour discovery and one-click provisioning
+
+Admins can refresh at least 100 demand-ranked tour suggestions from **Admin → Tour suggestions**. Discovery combines Google Trends, searches with no result on the site, and the configured destination catalog. Creating a suggestion queues SEO page creation, attaches 4–10 configured providers, crawls their structured price/rating data, compiles provider content, and then publishes the tour.
+
+**Admin → Synchronization** centralizes tour discovery, price/rating refresh, content refresh, and full synchronization with run history. Discovery runs daily at 01:30, prices hourly, and provider content daily at 02:30. Keep both the scheduler and queue worker above running in production. Provider definitions and the Google Trends geography/feed can be customized in `config/crawler.php` or with `GOOGLE_TRENDS_GEO`, `GOOGLE_TRENDS_FEED_URL`, and `TOUR_SUGGESTIONS_LIMIT`.
 
 ## Price-drop SMS alerts
 

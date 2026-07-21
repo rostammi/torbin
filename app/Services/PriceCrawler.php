@@ -9,6 +9,7 @@ use App\Services\Crawlers\AlibabaCrawler;
 use App\Services\Crawlers\CrawlResult;
 use App\Services\Crawlers\FlytodayCrawler;
 use App\Services\Crawlers\SafarmarketCrawler;
+use App\Services\Crawlers\StructuredDataCrawler;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Throwable;
@@ -19,6 +20,7 @@ class PriceCrawler
         private readonly AlibabaCrawler $alibaba,
         private readonly FlytodayCrawler $flytoday,
         private readonly SafarmarketCrawler $safarmarket,
+        private readonly StructuredDataCrawler $structured,
         private readonly WebsiteContentExtractor $contentExtractor,
         private readonly TourContentCompiler $contentCompiler,
     ) {}
@@ -122,6 +124,7 @@ class PriceCrawler
             'alibaba' => $this->alibaba->crawl($source),
             'flytoday' => $this->flytoday->crawl($source),
             'safarmarket' => $this->safarmarket->crawl($source),
+            'structured' => $this->structured->crawl($source),
             'json', 'regex' => $this->extractGeneric($source),
             default => throw new RuntimeException('نوع استخراج پشتیبانی نمی‌شود.'),
         };

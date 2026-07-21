@@ -6,7 +6,7 @@
     <section class="container admin-page">
         <div class="section-head">
             <div><span class="eyebrow">پنل مدیریت</span><h1>تورها</h1></div>
-            <a class="button" href="{{ route('admin.tours.create') }}">+ تور جدید</a>
+            <div class="heading-actions"><a class="button button-secondary" href="{{ route('admin.suggestions.index') }}">پیشنهادهای محبوب</a><a class="button" href="{{ route('admin.tours.create') }}">+ تور جدید</a></div>
         </div>
         <div class="panel table-wrap">
             <table>

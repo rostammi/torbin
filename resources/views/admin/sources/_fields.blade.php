@@ -2,7 +2,7 @@
     <label>نام سایت *<input name="provider_name" value="{{ old('provider_name', $source->provider_name) }}" required placeholder="مثلاً علی‌بابا"></label>
     <label>نوع خواندن قیمت
         <select name="extraction_type" required>
-            @foreach(['alibaba'=>'علی‌بابا (اختصاصی)', 'flytoday'=>'فلای‌تودی (اختصاصی)', 'safarmarket'=>'سفرمارکت (اختصاصی)', 'regex'=>'Regex از HTML', 'json'=>'مسیر JSON', 'manual'=>'قیمت دستی'] as $value=>$label)<option value="{{ $value }}" @selected(old('extraction_type', $source->extraction_type ?: 'regex') === $value)>{{ $label }}</option>@endforeach
+            @foreach(['alibaba'=>'علی‌بابا (اختصاصی)', 'flytoday'=>'فلای‌تودی (اختصاصی)', 'safarmarket'=>'سفرمارکت (اختصاصی)', 'structured'=>'داده ساختاریافته (خودکار)', 'regex'=>'Regex از HTML', 'json'=>'مسیر JSON', 'manual'=>'قیمت دستی'] as $value=>$label)<option value="{{ $value }}" @selected(old('extraction_type', $source->extraction_type ?: 'regex') === $value)>{{ $label }}</option>@endforeach
         </select>
     </label>
 </div>

@@ -93,7 +93,7 @@ class PriceSourceController extends Controller
             'provider_name' => ['required', 'string', 'max:120'],
             'source_url' => ['required', 'url:http,https', 'max:2000'],
             'buy_url' => ['nullable', 'url:http,https', 'max:2000'],
-            'extraction_type' => ['required', Rule::in(['alibaba', 'flytoday', 'safarmarket', 'regex', 'json', 'manual'])],
+            'extraction_type' => ['required', Rule::in(['alibaba', 'flytoday', 'safarmarket', 'structured', 'regex', 'json', 'manual'])],
             'selector' => [Rule::requiredIf(in_array($type, ['regex', 'json'], true)), 'nullable', 'string', 'max:2000'],
             'price_multiplier' => ['required', 'numeric', 'min:0.01', 'max:100000'],
             'latest_price' => [Rule::requiredIf($type === 'manual'), 'nullable', 'integer', 'min:0'],
