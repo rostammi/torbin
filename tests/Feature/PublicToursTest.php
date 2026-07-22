@@ -25,6 +25,28 @@ class PublicToursTest extends TestCase
         $this->get('/')->assertOk()->assertSee('تور شیراز')->assertSee('7,000,000')->assertDontSee('پیش‌نویس');
     }
 
+    public function test_home_uses_compact_persian_pagination(): void
+    {
+        foreach (range(1, 13) as $number) {
+            Tour::create([
+                'title' => "تور صفحه اصلی {$number}",
+                'slug' => "home-tour-{$number}",
+                'description' => 'توضیحات تور',
+                'is_active' => true,
+            ]);
+        }
+
+        $response = $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('نمایش 1 تا 12 از 13 نتیجه')
+            ->assertSee('قبلی')
+            ->assertSee('بعدی')
+            ->assertDontSee('pagination.previous')
+            ->assertDontSee('pagination.next');
+
+        $response->assertDontSee('<svg', false);
+    }
+
     public function test_tour_page_sorts_offers_by_price(): void
     {
         $tour = Tour::create([
