@@ -20,6 +20,7 @@
                         <td class="actions">
                             <a href="{{ route('tours.show', $tour) }}" target="_blank">نمایش</a>
                             <a href="{{ route('admin.tours.edit', $tour) }}">ویرایش</a>
+                            <form method="post" action="{{ route('admin.tours.refresh-images', $tour) }}" onsubmit="if (!confirm('عکس‌های فعلی این تور با تصاویر جدید جایگزین شوند؟')) return false; this.querySelector('button').disabled=true; this.querySelector('button').textContent='در صف…'">@csrf<button>تعویض عکس‌ها</button></form>
                             <form method="post" action="{{ route('admin.tours.destroy', $tour) }}" onsubmit="return confirm('این تور حذف شود؟')">@csrf @method('DELETE')<button class="danger-link">حذف</button></form>
                         </td>
                     </tr>

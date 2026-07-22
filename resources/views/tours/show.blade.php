@@ -31,6 +31,25 @@
                 </div>
             @endif
 
+            @if ($tour->image_sources)
+                <details class="image-credits">
+                    <summary>منبع و مجوز تصاویر</summary>
+                    <ul>
+                        @foreach ($tour->image_sources as $source)
+                            <li>
+                                <a href="{{ data_get($source, 'page_url') }}" target="_blank" rel="noopener noreferrer">{{ data_get($source, 'artist', 'Wikimedia Commons') }}</a>
+                                <span>—</span>
+                                @if (data_get($source, 'license_url'))
+                                    <a href="{{ data_get($source, 'license_url') }}" target="_blank" rel="license noopener noreferrer">{{ data_get($source, 'license', 'مجوز آزاد') }}</a>
+                                @else
+                                    <span>{{ data_get($source, 'license', 'مجوز آزاد') }}</span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                </details>
+            @endif
+
             @if ($tour->video_url)
                 <div class="video-box">
                     <h3>ویدئوی تور</h3>

@@ -65,6 +65,7 @@ class AdminToursTest extends TestCase
             ->assertSee('نمایش 1 تا 15 از 16 نتیجه')
             ->assertSee('قبلی')
             ->assertSee('بعدی')
+            ->assertSee('تعویض عکس‌ها')
             ->assertDontSee('pagination.previous')
             ->assertDontSee('pagination.next');
 

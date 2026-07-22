@@ -13,13 +13,14 @@ class Tour extends Model
 
     protected $fillable = [
         'title', 'slug', 'excerpt', 'description', 'auto_content', 'auto_content_updated_at',
-        'cover_image', 'gallery', 'video_url', 'is_active',
+        'cover_image', 'gallery', 'image_sources', 'video_url', 'is_active',
     ];
 
     protected function casts(): array
     {
         return [
             'gallery' => 'array',
+            'image_sources' => 'array',
             'auto_content' => 'array',
             'auto_content_updated_at' => 'datetime',
             'is_active' => 'boolean',

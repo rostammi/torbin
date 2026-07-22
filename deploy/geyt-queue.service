@@ -1,0 +1,16 @@
+[Unit]
+Description=Geyt Laravel Queue Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/rostammi/Downloads/geyt
+ExecStart=/usr/bin/php artisan queue:work --sleep=3 --timeout=86400 --tries=1 --max-time=3600
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=900
+
+[Install]
+WantedBy=default.target

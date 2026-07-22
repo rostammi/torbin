@@ -47,6 +47,48 @@ class PublicToursTest extends TestCase
         $response->assertDontSee('<svg', false);
     }
 
+    public function test_home_sorts_tours_by_compared_site_count_descending(): void
+    {
+        $mostCompared = Tour::create([
+            'title' => 'تور با بیشترین مقایسه',
+            'slug' => 'most-compared',
+            'description' => 'توضیحات',
+            'is_active' => true,
+        ]);
+        $leastCompared = Tour::create([
+            'title' => 'تور با کمترین مقایسه',
+            'slug' => 'least-compared',
+            'description' => 'توضیحات',
+            'is_active' => true,
+        ]);
+
+        foreach (range(1, 3) as $number) {
+            $source = $mostCompared->priceSources()->create([
+                'provider_name' => "سایت پرتعداد {$number}",
+                'source_url' => "https://example.com/more-{$number}",
+                'extraction_type' => 'manual',
+                'latest_price' => 10_000_000 + $number,
+            ]);
+            $source->agency->update(['balance' => 100_000]);
+        }
+        $source = $leastCompared->priceSources()->create([
+            'provider_name' => 'سایت کم‌تعداد',
+            'source_url' => 'https://example.com/less',
+            'extraction_type' => 'manual',
+            'latest_price' => 9_000_000,
+        ]);
+        $source->agency->update(['balance' => 100_000]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('مقایسه 3 سایت')
+            ->assertSee('مقایسه 1 سایت')
+            ->assertViewHas('tours', fn ($tours) => $tours->pluck('id')->all() === [
+                $mostCompared->id,
+                $leastCompared->id,
+            ]);
+    }
+
     public function test_tour_page_sorts_offers_by_price(): void
     {
         $tour = Tour::create([

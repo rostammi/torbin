@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\RefreshTourImages;
+use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Services\Alerts\PriceAlertNotifier;
 use App\Services\PriceCrawler;
@@ -12,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class TourController extends Controller
 {
@@ -74,6 +77,44 @@ class TourController extends Controller
         $success = $sources->filter(fn ($source) => $crawler->crawlContent($source, true))->count();
 
         return back()->with('success', "بررسی محتوا تمام شد: {$success} منبع از {$sources->count()} منبع موفق بود.");
+    }
+
+    public function refreshImages(Tour $tour): RedirectResponse
+    {
+        $running = SyncRun::query()
+            ->where('type', 'refresh_tour_images')
+            ->where('status', 'running')
+            ->whereNull('finished_at')
+            ->where('details->tour_id', $tour->id)
+            ->exists();
+
+        if ($running) {
+            return back()->with('error', 'تعویض تصاویر این تور از قبل در صف یا در حال اجراست.');
+        }
+
+        $run = SyncRun::create([
+            'user_id' => auth()->id(),
+            'type' => 'refresh_tour_images',
+            'total' => 1,
+            'details' => ['tour_id' => $tour->id],
+            'started_at' => now(),
+        ]);
+
+        try {
+            RefreshTourImages::dispatch($tour->id, $run->id);
+
+            return back()->with('success', "تعویض تصاویر {$tour->title} در صف قرار گرفت؛ تا دریافت موفق تصاویر جدید، عکس‌های فعلی حفظ می‌شوند.");
+        } catch (Throwable $exception) {
+            $run->update([
+                'status' => 'failed',
+                'failed' => 1,
+                'error' => mb_substr($exception->getMessage(), 0, 1000),
+                'finished_at' => now(),
+            ]);
+            report($exception);
+
+            return back()->with('error', 'شروع تعویض تصاویر ناموفق بود: '.$exception->getMessage());
+        }
     }
 
     private function validated(Request $request, ?Tour $tour = null): array

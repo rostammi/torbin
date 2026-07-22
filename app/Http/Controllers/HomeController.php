@@ -16,6 +16,7 @@ class HomeController extends Controller
         $tours = Tour::query()
             ->published()
             ->withPublicPricing()
+            ->orderByDesc('compared_sources_count')
             ->latest()
             ->paginate(12);
         $homeSliderAds = $advertisements->forPlacement('home_slider', 8);
