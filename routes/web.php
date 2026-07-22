@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\Admin\AdvertisementController;
 use App\Http\Controllers\Admin\AgencyController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PriceSourceController;
 use App\Http\Controllers\Admin\SyncController;
 use App\Http\Controllers\Admin\TourController as AdminTourController;
 use App\Http\Controllers\Admin\TourSuggestionController;
+use App\Http\Controllers\AdvertisementClickController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OutboundClickController;
@@ -18,6 +20,7 @@ Route::get('/search', [SearchController::class, 'index'])->middleware('throttle:
 Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->middleware('throttle:60,1')->name('search.suggestions');
 Route::get('/tours/{tour}', [HomeController::class, 'show'])->name('tours.show');
 Route::get('/go/{source}', OutboundClickController::class)->middleware('throttle:30,1')->name('outbound.click');
+Route::get('/ads/{advertisement}/click', AdvertisementClickController::class)->middleware('throttle:60,1')->name('advertisements.click');
 Route::post('/tours/{tour}/price-alerts', [PriceAlertController::class, 'store'])->middleware('throttle:5,1')->name('price-alerts.store');
 Route::get('/price-alerts/unsubscribe/{token}', [PriceAlertController::class, 'unsubscribe'])->middleware('throttle:10,1')->name('price-alerts.unsubscribe');
 
@@ -34,8 +37,10 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
 
     Route::middleware('admin.only')->group(function () {
         Route::resource('tours', AdminTourController::class)->except('show');
+        Route::resource('advertisements', AdvertisementController::class)->except('show');
         Route::get('suggestions', [TourSuggestionController::class, 'index'])->name('suggestions.index');
         Route::post('suggestions/discover', [TourSuggestionController::class, 'discover'])->name('suggestions.discover');
+        Route::post('suggestions/build-all', [TourSuggestionController::class, 'storeAll'])->name('suggestions.store-all');
         Route::post('suggestions/{suggestion}/create-tour', [TourSuggestionController::class, 'store'])->name('suggestions.store');
         Route::get('sync', [SyncController::class, 'index'])->name('sync.index');
         Route::post('sync', [SyncController::class, 'run'])->name('sync.run');

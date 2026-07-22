@@ -29,6 +29,6 @@
                 </tbody>
             </table>
         </div>
-        {{ $tours->links() }}
+        {{ $tours->links('pagination.admin') }}
     </section>
 @endsection

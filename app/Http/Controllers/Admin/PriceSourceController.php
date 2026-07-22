@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PriceSource;
 use App\Models\Tour;
 use App\Services\Alerts\PriceAlertNotifier;
+use App\Services\Discovery\ProviderCatalog;
 use App\Services\PriceCrawler;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,30 +14,12 @@ use Illuminate\Validation\Rule;
 
 class PriceSourceController extends Controller
 {
-    public function official(Tour $tour): RedirectResponse
+    public function official(Tour $tour, ProviderCatalog $providers): RedirectResponse
     {
-        $sources = [
-            'علی‌بابا' => ['alibaba', 'https://www.alibaba.ir/tour'],
-            'فلای‌تودی' => ['flytoday', 'https://www.flytoday.ir/packagetour'],
-            'سفرمارکت' => ['safarmarket', 'https://safarmarket.com/tours'],
-        ];
+        $destination = preg_replace('/^تور(?:های)?\s+/u', '', $tour->title) ?: $tour->title;
+        $count = $providers->attach($tour, $destination, 10);
 
-        foreach ($sources as $provider => [$type, $url]) {
-            $tour->priceSources()->updateOrCreate(['provider_name' => $provider], [
-                'source_url' => $url,
-                'buy_url' => $url,
-                'extraction_type' => $type,
-                'selector' => null,
-                'price_multiplier' => 1,
-                'currency' => 'تومان',
-                'is_active' => true,
-                'latest_price' => null,
-                'last_status' => null,
-                'last_error' => null,
-            ]);
-        }
-
-        return back()->with('success', 'سه منبع رسمی اضافه شدند. برای دریافت قیمت، «بررسی همه قیمت‌ها» را بزنید.');
+        return back()->with('success', "{$count} منبع تور اضافه شدند. برای دریافت قیمت، «بررسی همه قیمت‌ها» را بزنید.");
     }
 
     public function store(Request $request, Tour $tour, PriceAlertNotifier $alerts): RedirectResponse
@@ -93,7 +76,7 @@ class PriceSourceController extends Controller
             'provider_name' => ['required', 'string', 'max:120'],
             'source_url' => ['required', 'url:http,https', 'max:2000'],
             'buy_url' => ['nullable', 'url:http,https', 'max:2000'],
-            'extraction_type' => ['required', Rule::in(['alibaba', 'flytoday', 'safarmarket', 'structured', 'regex', 'json', 'manual'])],
+            'extraction_type' => ['required', Rule::in(['alibaba', 'flytoday', 'safarmarket', 'marketplace_html', 'structured', 'regex', 'json', 'manual'])],
             'selector' => [Rule::requiredIf(in_array($type, ['regex', 'json'], true)), 'nullable', 'string', 'max:2000'],
             'price_multiplier' => ['required', 'numeric', 'min:0.01', 'max:100000'],
             'latest_price' => [Rule::requiredIf($type === 'manual'), 'nullable', 'integer', 'min:0'],

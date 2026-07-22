@@ -26,7 +26,11 @@ class ProvisionSuggestedTour implements ShouldQueue
             $result = $provisioner->provision(TourSuggestion::findOrFail($this->suggestionId));
             $run->update([
                 'status' => 'success', 'successful' => 1, 'details' => [
-                    'tour_id' => $result['tour']->id, 'sources' => $result['sources'], 'crawled' => $result['crawled'],
+                    'tour_id' => $result['tour']->id,
+                    'action' => $result['created'] ? 'created' : 'updated',
+                    'sources' => $result['sources'],
+                    'crawled' => $result['crawled'],
+                    'content_crawled' => $result['content_crawled'],
                 ], 'finished_at' => now(),
             ]);
         } catch (Throwable $exception) {

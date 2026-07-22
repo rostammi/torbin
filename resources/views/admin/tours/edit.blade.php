@@ -17,7 +17,7 @@
         <div class="subsection-head">
             <div><span class="eyebrow">کراولرها</span><h2>منابع مقایسه قیمت</h2></div>
             <div class="actions">
-                <form method="post" action="{{ route('admin.sources.official', $tour) }}">@csrf<button class="button button-secondary">افزودن ۳ منبع رسمی</button></form>
+                <form method="post" action="{{ route('admin.sources.official', $tour) }}">@csrf<button class="button button-secondary">افزودن ۱۰ منبع تور</button></form>
                 <form method="post" action="{{ route('admin.tours.crawl-content', $tour) }}">@csrf<button class="button button-secondary">بررسی محتوای همه منابع</button></form>
                 <form method="post" action="{{ route('admin.tours.crawl', $tour) }}">@csrf<button class="button">بررسی همه قیمت‌ها</button></form>
             </div>

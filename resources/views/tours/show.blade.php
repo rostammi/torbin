@@ -43,7 +43,7 @@
             <div class="comparison-title">
                 <span class="eyebrow">قیمت امروز</span>
                 <h2>مقایسه فروشنده‌ها</h2>
-                <p>{{ $tour->priceSources->count() }} پیشنهاد فعال، مرتب‌شده از ارزان‌ترین</p>
+                <p>{{ $tour->priceSources->count() }} پیشنهاد دارای قیمت، مرتب‌شده از ارزان‌ترین</p>
             </div>
 
             <div class="price-list">
@@ -65,13 +65,9 @@
                             </div>
                         </div>
                         <div class="price-action">
-                            @if ($source->latest_price > 0)
-                                <strong>{{ number_format($source->latest_price) }} <small>{{ $source->currency }}</small></strong>
-                            @else
-                                <strong class="unavailable-price">۰ <small>{{ $source->currency }} · بدون تور فعال</small></strong>
-                            @endif
+                            <strong>{{ number_format($source->latest_price) }} <small>{{ $source->currency }}</small></strong>
                             @if(!$source->agency || $source->agency->canAffordClick())
-                                <a href="{{ route('outbound.click', $source) }}" target="_blank" rel="nofollow sponsored noopener">{{ $source->latest_price > 0 ? 'خرید تور' : 'بررسی سایت' }} ↗</a>
+                                <a href="{{ route('outbound.click', $source) }}" target="_blank" rel="nofollow sponsored noopener">خرید تور ↗</a>
                             @else
                                 <span class="buy-disabled">اعتبار ارائه‌دهنده کافی نیست</span>
                             @endif
@@ -82,6 +78,9 @@
                 @endforelse
             </div>
             <p class="comparison-note">قیمت‌ها ممکن است در سایت فروشنده تغییر کنند؛ مبلغ نهایی را پیش از خرید بررسی کنید.</p>
+            @if($offersBottomAd)
+                @include('advertisements._banner', ['advertisement' => $offersBottomAd, 'class' => 'tour-offers-ad'])
+            @endif
             @php($alertOffer = $tour->priceSources->first(fn ($item) => $item->latest_price > 0))
             @if($alertOffer)
                 <div class="price-alert-box">
@@ -126,6 +125,9 @@
     @endif
 
     <section class="container history-section">
+        @if($trendTopAd)
+            @include('advertisements._banner', ['advertisement' => $trendTopAd, 'class' => 'trend-top-ad'])
+        @endif
         <div class="section-head">
             <div><span class="eyebrow">روند تغییرات</span><h2>سابقه قیمت این تور</h2></div>
             <span class="muted">کمترین قیمت در ۳۰ روز دارای داده اخیر</span>

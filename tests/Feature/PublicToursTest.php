@@ -33,11 +33,14 @@ class PublicToursTest extends TestCase
         $tour->priceSources()->createMany([
             ['provider_name' => 'فروشنده دوم', 'source_url' => 'https://example.com/a', 'extraction_type' => 'manual', 'latest_price' => 200, 'is_featured' => true],
             ['provider_name' => 'فروشنده اول', 'source_url' => 'https://example.com/b', 'extraction_type' => 'manual', 'latest_price' => 100],
+            ['provider_name' => 'فروشنده بدون قیمت', 'source_url' => 'https://example.com/c', 'extraction_type' => 'manual', 'latest_price' => 0],
         ]);
         $tour->priceSources->each(fn ($source) => $source->agency->update(['balance' => 100_000]));
 
         $response = $this->get('/tours/kish')->assertOk();
         $response->assertSeeInOrder(['فروشنده اول', 'فروشنده دوم']);
+        $response->assertDontSee('فروشنده بدون قیمت');
+        $response->assertSee('2 پیشنهاد دارای قیمت');
         $response->assertSee('پیشنهاد ویژه');
     }
 
@@ -98,6 +101,8 @@ class PublicToursTest extends TestCase
             ->assertOk()
             ->assertViewHas('priceTrend', fn ($trend) => $trend->pluck('price')->all() === [8_000_000, 7_000_000])
             ->assertSee('روند کمترین قیمت تور')
+            ->assertSee('قیمت (تومان)')
+            ->assertSee('تاریخ')
             ->assertSee('آژانس دوم')
             ->assertSee('آژانس اول');
     }

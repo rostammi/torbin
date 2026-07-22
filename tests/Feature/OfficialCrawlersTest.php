@@ -134,6 +134,56 @@ class OfficialCrawlersTest extends TestCase
         $this->assertSame(17_500_000, $source->fresh()->latest_price);
     }
 
+    public function test_marketplace_html_follows_the_destination_link_and_reads_its_lowest_price(): void
+    {
+        Http::fake([
+            '93.184.216.34/tours' => Http::response(<<<'HTML'
+                <html><body>
+                    <article><a href="/tours/mashhad">تور مشهد</a><b>۴,۰۰۰,۰۰۰ تومان</b></article>
+                    <a href="/tours/kish">مشاهده تور کیش</a>
+                </body></html>
+                HTML),
+            '93.184.216.34/tours/kish' => Http::response(<<<'HTML'
+                <html><head><title>تور کیش</title></head><body>
+                    <nav><span class="price">تور مشهد ۱,۰۰۰,۰۰۰ تومان</span></nav>
+                    <article><h2>تور کیش اقتصادی</h2><span class="price">از ۱۲,۵۰۰,۰۰۰ تومان</span></article>
+                    <article><h2>تور کیش ویژه</h2><span class="price">۱۰,۹۰۰,۰۰۰ تومان</span></article>
+                </body></html>
+                HTML),
+        ]);
+        $source = $this->source('marketplace_html', 'https://93.184.216.34/tours');
+        $source->update(['selector' => 'کیش']);
+
+        $this->assertTrue(app(PriceCrawler::class)->crawl($source));
+        $this->assertSame(10_900_000, $source->fresh()->latest_price);
+        $this->assertSame('https://93.184.216.34/tours/kish', $source->fresh()->buy_url);
+    }
+
+    public function test_marketplace_html_does_not_mix_prices_from_other_destinations(): void
+    {
+        Http::fake(['93.184.216.34/*' => Http::response(<<<'HTML'
+            <html><body>
+                <article><a href="/tours/mashhad">تور مشهد <span>۲,۰۰۰,۰۰۰ تومان</span></a></article>
+                <article><a href="/tours/kish">تور کیش <span class="price toman">۸,۷۵۰,۰۰۰</span></a></article>
+            </body></html>
+            HTML)]);
+        $source = $this->source('marketplace_html', 'https://93.184.216.34/tours');
+        $source->update(['selector' => 'کیش']);
+
+        $this->assertTrue(app(PriceCrawler::class)->crawl($source));
+        $this->assertSame(8_750_000, $source->fresh()->latest_price);
+    }
+
+    public function test_provider_catalog_contains_ten_crawlable_tour_sites(): void
+    {
+        $providers = collect(config('crawler.providers'));
+
+        $this->assertCount(10, $providers);
+        $this->assertCount(10, $providers->pluck('name')->unique());
+        $this->assertNotContains('manual', $providers->pluck('type'));
+        $this->assertContains('marketplace_html', $providers->pluck('type'));
+    }
+
     private function source(string $type, string $url): PriceSource
     {
         $tour = Tour::create([

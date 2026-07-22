@@ -56,8 +56,7 @@ class Tour extends Model
         return $this->priceSources()
             ->where('is_active', true)
             ->funded()
-            ->whereNotNull('latest_price')
-            ->orderByRaw('case when latest_price = 0 then 1 else 0 end')
+            ->where('latest_price', '>', 0)
             ->orderBy('latest_price');
     }
 
@@ -70,6 +69,6 @@ class Tour extends Model
     {
         return $query
             ->withMin(['priceSources as minimum_price' => fn ($source) => $source->where('is_active', true)->funded()->where('latest_price', '>', 0)], 'latest_price')
-            ->withCount(['priceSources as compared_sources_count' => fn ($source) => $source->where('is_active', true)->funded()->whereNotNull('latest_price')]);
+            ->withCount(['priceSources as compared_sources_count' => fn ($source) => $source->where('is_active', true)->funded()->where('latest_price', '>', 0)]);
     }
 }

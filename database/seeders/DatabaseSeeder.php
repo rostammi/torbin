@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Tour;
 use App\Models\User;
+use App\Services\Discovery\ProviderCatalog;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -43,24 +44,7 @@ class DatabaseSeeder extends Seeder
 
     private function seedOfficialSources(Tour $tour): void
     {
-        $sources = [
-            'علی‌بابا' => ['alibaba', 'https://www.alibaba.ir/tour'],
-            'فلای‌تودی' => ['flytoday', 'https://www.flytoday.ir/packagetour'],
-            'سفرمارکت' => ['safarmarket', 'https://safarmarket.com/tours'],
-        ];
-
-        foreach ($sources as $provider => [$type, $url]) {
-            $tour->priceSources()->updateOrCreate(['provider_name' => $provider], [
-                'source_url' => $url,
-                'buy_url' => $url,
-                'extraction_type' => $type,
-                'selector' => null,
-                'latest_price' => null,
-                'currency' => 'تومان',
-                'is_active' => true,
-                'last_status' => null,
-                'last_checked_at' => null,
-            ]);
-        }
+        $destination = preg_replace('/^تور(?:های)?\s+/u', '', $tour->title) ?: $tour->title;
+        app(ProviderCatalog::class)->attach($tour, $destination, 10);
     }
 }

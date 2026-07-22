@@ -27,6 +27,7 @@
                         <a href="{{ route('admin.suggestions.index') }}">پیشنهاد تورها</a>
                         <a href="{{ route('admin.sync.index') }}">همگام‌سازی</a>
                         <a href="{{ route('admin.agencies.index') }}">آژانس‌ها و اعتبار</a>
+                        <a href="{{ route('admin.advertisements.index') }}">تبلیغات</a>
                     @endif
                     <form action="{{ route('logout') }}" method="post" class="inline-form">
                         @csrf
@@ -125,5 +126,6 @@
             document.addEventListener('click', event => { if (!box.contains(event.target)) close(); });
         })();
     </script>
+    @stack('scripts')
 </body>
 </html>

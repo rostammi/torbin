@@ -14,6 +14,8 @@
         </div>
     </section>
 
+    @include('advertisements._slider', ['advertisements' => $homeSliderAds])
+
     <section class="container section-space">
         <div class="section-head">
             <div>
@@ -26,6 +28,10 @@
         <div class="tour-grid">
             @forelse ($tours as $tour)
                 @include('tours._card')
+                @if(($loop->iteration % 9 === 0 || $loop->last) && $homeInlineAds->isNotEmpty())
+                    @php($slotIndex = min(intdiv($loop->iteration - 1, 9), $homeInlineAds->count() - 1))
+                    @include('advertisements._banner', ['advertisement' => $homeInlineAds[$slotIndex], 'class' => 'ad-banner-grid'])
+                @endif
             @empty
                 <div class="empty-state">
                     <span>🧭</span>
@@ -38,3 +44,23 @@
         {{ $tours->links() }}
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        (() => {
+            const slider = document.querySelector('[data-ad-slider]');
+            if (!slider) return;
+            const slides = [...slider.querySelectorAll('.ad-slide')];
+            const dots = [...slider.querySelectorAll('.ad-slider-dots button')];
+            if (slides.length < 2) return;
+            let current = 0;
+            const show = index => {
+                current = (index + slides.length) % slides.length;
+                slides.forEach((slide, i) => slide.classList.toggle('is-active', i === current));
+                dots.forEach((dot, i) => dot.classList.toggle('is-active', i === current));
+            };
+            dots.forEach((dot, index) => dot.addEventListener('click', () => show(index)));
+            window.setInterval(() => show(current + 1), 6500);
+        })();
+    </script>
+@endpush

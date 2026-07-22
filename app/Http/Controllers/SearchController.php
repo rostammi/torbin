@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Advertising\AdvertisementManager;
 use App\Services\Search\SearchMissTracker;
 use App\Services\Search\TourSearch;
 use Illuminate\Http\JsonResponse;
@@ -10,7 +11,7 @@ use Illuminate\View\View;
 
 class SearchController extends Controller
 {
-    public function index(Request $request, TourSearch $search, SearchMissTracker $misses): View
+    public function index(Request $request, TourSearch $search, SearchMissTracker $misses, AdvertisementManager $advertisements): View
     {
         $term = trim($request->string('q')->toString());
         $tours = mb_strlen($term) >= 3
@@ -20,8 +21,10 @@ class SearchController extends Controller
         if ($tours && $tours->total() === 0 && $tours->currentPage() === 1) {
             $misses->track($term, $request);
         }
+        $searchTopAd = $advertisements->forPlacement('search_top')->first();
+        $searchResultAd = $tours ? $advertisements->forPlacement('search_result')->first() : null;
 
-        return view('search.index', compact('term', 'tours'));
+        return view('search.index', compact('term', 'tours', 'searchTopAd', 'searchResultAd'));
     }
 
     public function suggestions(Request $request, TourSearch $search): JsonResponse

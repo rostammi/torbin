@@ -4,32 +4,36 @@ namespace App\Http\Controllers;
 
 use App\Models\PriceHistory;
 use App\Models\Tour;
+use App\Services\Advertising\AdvertisementManager;
 use App\Services\Analytics\TourViewTracker;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    public function index(): View
+    public function index(AdvertisementManager $advertisements): View
     {
         $tours = Tour::query()
             ->published()
             ->withPublicPricing()
             ->latest()
             ->paginate(12);
+        $homeSliderAds = $advertisements->forPlacement('home_slider', 8);
+        $homeInlineAds = $tours->isEmpty()
+            ? collect()
+            : $advertisements->forPlacement('home_inline', (int) ceil($tours->count() / 9));
 
-        return view('home', compact('tours'));
+        return view('home', compact('tours', 'homeSliderAds', 'homeInlineAds'));
     }
 
-    public function show(Request $request, Tour $tour, TourViewTracker $views): View
+    public function show(Request $request, Tour $tour, TourViewTracker $views, AdvertisementManager $advertisements): View
     {
         abort_unless($tour->is_active, 404);
         $views->track($tour, $request);
         $tour->load(['priceSources' => fn ($query) => $query
             ->where('is_active', true)
             ->funded()
-            ->whereNotNull('latest_price')
-            ->orderByRaw('case when latest_price = 0 then 1 else 0 end')
+            ->where('latest_price', '>', 0)
             ->orderBy('latest_price')
             ->with('agency')]);
 
@@ -69,7 +73,9 @@ class HomeController extends Controller
             ->sortBy('day')
             ->take(-30)
             ->values();
+        $trendTopAd = $advertisements->forPlacement('tour_trend_top')->first();
+        $offersBottomAd = $advertisements->forPlacement('tour_offers_bottom')->first();
 
-        return view('tours.show', compact('tour', 'priceTrend'));
+        return view('tours.show', compact('tour', 'priceTrend', 'trendTopAd', 'offersBottomAd'));
     }
 }
