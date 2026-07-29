@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class TourSuggestion extends Model
 {
     protected $fillable = [
-        'keyword', 'suggested_title', 'destination', 'trend_score', 'source', 'status',
+        'category', 'keyword', 'suggested_title', 'destination', 'trend_score', 'source', 'status',
         'metadata', 'discovered_at', 'tour_id',
     ];
 

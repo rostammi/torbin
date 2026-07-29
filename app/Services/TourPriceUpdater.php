@@ -20,7 +20,10 @@ class TourPriceUpdater
     public function update(Tour $tour): array
     {
         $destination = $this->destination($tour);
-        $primaryProviders = collect(config('crawler.providers', []))
+        $configuredProviders = $tour->category === 'tour'
+            ? config('crawler.providers', [])
+            : config("comparison.providers.{$tour->category}", []);
+        $primaryProviders = collect($configuredProviders)
             ->take(self::PRIMARY_PROVIDER_COUNT)
             ->values();
         $this->providers->attach($tour, $destination, self::PRIMARY_PROVIDER_COUNT);
@@ -56,7 +59,10 @@ class TourPriceUpdater
         $fallbackChecked = 0;
         $fallbackProviders = [];
         if ($pricesFound < self::MINIMUM_PRICES) {
-            foreach (config('crawler.fallback_providers', []) as $provider) {
+            $fallbackConfig = $tour->category === 'tour'
+                ? config('crawler.fallback_providers', [])
+                : config("comparison.fallback_providers.{$tour->category}", []);
+            foreach ($fallbackConfig as $provider) {
                 $source = $this->providers->attachProvider($tour, $destination, $provider);
                 $checked++;
                 $fallbackChecked++;

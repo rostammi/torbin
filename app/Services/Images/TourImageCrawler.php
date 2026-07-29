@@ -23,6 +23,10 @@ class TourImageCrawler
 
         $query = $this->searchQuery($tour);
         $candidates = $this->search($query);
+        $fallbackQuery = $this->fallbackSearchQuery($tour);
+        if ($candidates === [] && $fallbackQuery && $fallbackQuery !== $query) {
+            $candidates = $this->search($fallbackQuery);
+        }
         $images = [];
         $limit ??= (int) config('crawler.images.count', 4);
 
@@ -96,13 +100,22 @@ class TourImageCrawler
 
     private function searchQuery(Tour $tour): string
     {
-        $destination = TourSuggestion::query()
+        $suggestion = TourSuggestion::query()
             ->where('tour_id', $tour->id)
             ->whereNotNull('destination')
-            ->value('destination');
+            ->first();
 
-        if ($destination) {
-            return (string) data_get(config('crawler.images.aliases', []), trim($destination), trim($destination));
+        if ($suggestion) {
+            $customQuery = trim((string) data_get($suggestion->metadata, 'image_query'));
+            if ($customQuery !== '') {
+                return $customQuery;
+            }
+
+            return (string) data_get(
+                config('crawler.images.aliases', []),
+                trim($suggestion->destination),
+                trim($suggestion->destination),
+            );
         }
 
         return str($tour->title)
@@ -110,6 +123,24 @@ class TourImageCrawler
             ->replaceMatches('/[|\-–—].*$/u', '')
             ->squish()
             ->toString();
+    }
+
+    private function fallbackSearchQuery(Tour $tour): ?string
+    {
+        $destination = TourSuggestion::query()
+            ->where('tour_id', $tour->id)
+            ->whereNotNull('destination')
+            ->value('destination');
+
+        if (! $destination) {
+            return null;
+        }
+
+        return (string) data_get(
+            config('crawler.images.aliases', []),
+            trim($destination),
+            trim($destination),
+        );
     }
 
     private function search(string $query): array

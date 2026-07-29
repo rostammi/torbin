@@ -48,7 +48,7 @@
                                 : null;
                         @endphp
                         <tr>
-                            <td><strong>{{ $tour->title }}</strong><small><a href="{{ route('tours.show', $tour) }}" target="_blank">مشاهده صفحه ↗</a></small></td>
+                            <td><strong>{{ $tour->title }}</strong><small><a href="{{ $tour->publicUrl() }}" target="_blank">مشاهده صفحه ↗</a></small></td>
                             <td>{{ $tour->public_minimum_price ? number_format($tour->public_minimum_price).' تومان' : 'بدون قیمت فعال' }}</td>
                             <td>
                                 @if(isset($tour->agency_price))

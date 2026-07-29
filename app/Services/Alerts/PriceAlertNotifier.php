@@ -51,6 +51,6 @@ class PriceAlertNotifier
     private function message(Tour $tour, int $price, string $currency, string $token): string
     {
         return "کاهش قیمت {$tour->title}: اکنون ".number_format($price)." {$currency}\n".
-            route('tours.show', $tour)."\nلغو: ".route('price-alerts.unsubscribe', $token);
+            $tour->publicUrl()."\nلغو: ".route('price-alerts.unsubscribe', $token);
     }
 }

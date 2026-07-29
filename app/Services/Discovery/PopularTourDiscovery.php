@@ -24,7 +24,7 @@ class PopularTourDiscovery
         'سیشل', 'اندونزی', 'ازبکستان', 'سمرقند', 'قزاقستان', 'آلماتی', 'قرقیزستان', 'لبنان', 'بیروت',
     ];
 
-    private const VARIANTS = [
+    public const VARIANTS = [
         'main' => 'تور %s',
         'cheap' => 'تور %s ارزان',
         'last_minute' => 'تور %s لحظه آخری',
@@ -35,20 +35,25 @@ class PopularTourDiscovery
 
     public function discover(?int $limit = null): array
     {
-        $perRegionLimit = max(100, $limit ?? (int) config('crawler.suggestions_limit', 120));
+        $perRegionLimit = max(1, $limit ?? (int) config('crawler.suggestions_limit', 120));
         $domestic = $this->catalogCandidates(self::DOMESTIC_DESTINATIONS, 'domestic', $perRegionLimit);
         $foreign = $this->catalogCandidates(self::FOREIGN_DESTINATIONS, 'foreign', $perRegionLimit);
 
         $saved = [];
         foreach ($domestic->concat($foreign) as $item) {
-            $suggestion = TourSuggestion::updateOrCreate(['keyword' => $item['keyword']], [
+            $suggestion = TourSuggestion::updateOrCreate([
+                'category' => 'tour',
+                'destination' => $item['destination'],
+            ], [
+                'keyword' => $item['keyword'],
                 'suggested_title' => $this->seoTitle($item['keyword']),
                 'destination' => $item['destination'],
                 'trend_score' => $item['score'],
                 'source' => 'destination_catalog',
                 'metadata' => [
                     'region' => $item['region'],
-                    'variant' => $item['variant'],
+                    'variant' => 'main',
+                    'keywords' => $item['keywords'],
                     'seeded' => true,
                 ],
                 'discovered_at' => now(),
@@ -56,7 +61,9 @@ class PopularTourDiscovery
             $saved[] = $suggestion->id;
         }
         TourSuggestion::query()
-            ->where('source', '!=', 'destination_catalog')
+            ->where('category', 'tour')
+            ->where('source', 'destination_catalog')
+            ->whereNotIn('id', $saved)
             ->delete();
 
         return [
@@ -72,20 +79,18 @@ class PopularTourDiscovery
     private function catalogCandidates(array $destinations, string $region, int $limit): Collection
     {
         return collect($destinations)
-            ->flatMap(function (string $destination, int $destinationIndex) use ($region) {
-                return collect(self::VARIANTS)->map(function (string $template, string $variant) use ($destination, $destinationIndex, $region) {
-                    $variantIndex = array_search($variant, array_keys(self::VARIANTS), true);
-
-                    return [
-                        'keyword' => sprintf($template, $destination),
-                        'destination' => $destination,
-                        'region' => $region,
-                        'variant' => $variant,
-                        'score' => max(20, 95 - $destinationIndex - ($variantIndex * 4)),
-                    ];
-                })->values();
+            ->map(function (string $destination, int $destinationIndex) use ($region) {
+                return [
+                    'keyword' => sprintf(self::VARIANTS['main'], $destination),
+                    'keywords' => collect(self::VARIANTS)
+                        ->map(fn (string $template) => sprintf($template, $destination))
+                        ->values()
+                        ->all(),
+                    'destination' => $destination,
+                    'region' => $region,
+                    'score' => max(20, 95 - $destinationIndex),
+                ];
             })
-            ->unique('keyword')
             ->sortByDesc('score')
             ->take($limit)
             ->values();

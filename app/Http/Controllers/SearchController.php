@@ -38,7 +38,7 @@ class SearchController extends Controller
         $total = (clone $query)->count();
         $items = $query->limit(4)->get()->map(fn ($tour) => [
             'title' => $tour->title,
-            'url' => route('tours.show', $tour),
+            'url' => $tour->publicUrl(),
             'excerpt' => $tour->excerpt ?: str($tour->description)->stripTags()->limit(75)->toString(),
             'minimum_price' => $tour->minimum_price,
             'compared_sources_count' => $tour->compared_sources_count,

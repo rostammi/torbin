@@ -5,11 +5,11 @@
 @section('content')
     <section class="container admin-page">
         <div class="section-head">
-            <div><span class="eyebrow">اتوماسیون محتوا</span><h1>پیشنهادهای ساخت تور</h1><p class="muted">پیشنهادهای کنترل‌شده و مرتبط، فقط از کاتالوگ مقصدهای داخلی و خارجی</p></div>
+            <div><span class="eyebrow">اتوماسیون محتوا</span><h1>پیشنهادهای صفحات مقایسه</h1><p class="muted">کاتالوگ کنترل‌شده تور، هتل، اقامتگاه و خدمات ویزا</p></div>
             <div class="heading-actions">
                 <form method="post" action="{{ route('admin.suggestions.discover') }}">@csrf<button class="button button-secondary">↻ دریافت پیشنهادهای تازه</button></form>
-                <form method="post" action="{{ route('admin.suggestions.store-all') }}" onsubmit="if (!confirm('همه پیشنهادهای داخلی و خارجی ساخته یا به‌روزرسانی شوند؟')) return false; this.querySelector('button').disabled=true; this.querySelector('button').textContent='در حال شروع جاب…'">
-                    @csrf
+                <form method="post" action="{{ route('admin.suggestions.store-all') }}" onsubmit="if (!confirm('همه پیشنهادهای این دسته ساخته یا به‌روزرسانی شوند؟')) return false; this.querySelector('button').disabled=true; this.querySelector('button').textContent='در حال شروع جاب…'">
+                    @csrf <input type="hidden" name="category" value="{{ $category }}">
                     <button class="button button-featured" @disabled($bulkRun?->status === 'running' && ! $bulkRun?->finished_at)>ساخت/به‌روزرسانی همه</button>
                 </form>
             </div>
@@ -22,16 +22,26 @@
             </div>
         @endif
 
-        <div class="suggestion-region-tabs" role="tablist" aria-label="نوع مقصد">
-            <a role="tab" aria-selected="{{ $region === 'domestic' ? 'true' : 'false' }}" class="{{ $region === 'domestic' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', array_filter(['region' => 'domestic', 'status' => $status])) }}"><span>مقصدهای داخلی</span><b>{{ number_format($regionCounts->get('domestic', 0)) }} پیشنهاد</b></a>
-            <a role="tab" aria-selected="{{ $region === 'foreign' ? 'true' : 'false' }}" class="{{ $region === 'foreign' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', array_filter(['region' => 'foreign', 'status' => $status])) }}"><span>مقصدهای خارجی</span><b>{{ number_format($regionCounts->get('foreign', 0)) }} پیشنهاد</b></a>
+        <div class="suggestion-region-tabs" role="tablist" aria-label="دسته مقایسه">
+            @foreach(config('comparison.categories') as $key => $item)
+                <a role="tab" aria-selected="{{ $category === $key ? 'true' : 'false' }}" class="{{ $category === $key ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['category' => $key]) }}">
+                    <span>{{ $item['plural'] }}</span><b>{{ number_format($categoryCounts->get($key, 0)) }} پیشنهاد</b>
+                </a>
+            @endforeach
         </div>
 
+        @if($category === 'tour')
+            <div class="filter-tabs">
+                <a class="{{ $region === 'domestic' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['category' => $category, 'region' => 'domestic']) }}">مقصدهای داخلی</a>
+                <a class="{{ $region === 'foreign' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['category' => $category, 'region' => 'foreign']) }}">مقصدهای خارجی</a>
+            </div>
+        @endif
+
         <div class="filter-tabs">
-            <a class="{{ $status === '' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['region' => $region]) }}">همه</a>
-            <a class="{{ $status === 'pending' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['region' => $region, 'status' => 'pending']) }}">در انتظار ساخت</a>
-            <a class="{{ $status === 'created' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['region' => $region, 'status' => 'created']) }}">ساخته‌شده</a>
-            <a class="{{ $status === 'failed' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['region' => $region, 'status' => 'failed']) }}">نیازمند بررسی</a>
+            <a class="{{ $status === '' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['category' => $category, 'region' => $region]) }}">همه</a>
+            <a class="{{ $status === 'pending' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['category' => $category, 'region' => $region, 'status' => 'pending']) }}">در انتظار ساخت</a>
+            <a class="{{ $status === 'created' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['category' => $category, 'region' => $region, 'status' => 'created']) }}">ساخته‌شده</a>
+            <a class="{{ $status === 'failed' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['category' => $category, 'region' => $region, 'status' => 'failed']) }}">نیازمند بررسی</a>
         </div>
 
         <div class="panel table-wrap">
@@ -40,15 +50,21 @@
                 <tbody>
                 @forelse ($suggestions as $suggestion)
                     <tr>
-                        <td><strong>{{ $suggestion->keyword }}</strong><small>{{ $suggestion->suggested_title }}</small></td>
+                        <td>
+                            <strong>{{ $suggestion->keyword }}</strong>
+                            <small>{{ $suggestion->suggested_title }}</small>
+                            @if(data_get($suggestion->metadata, 'keywords'))
+                                <small>{{ count(data_get($suggestion->metadata, 'keywords')) }} کلیدواژه در یک صفحه مقصد</small>
+                            @endif
+                        </td>
                         <td><span class="trend-score"><i style="width: {{ $suggestion->trend_score }}%"></i></span><small>{{ $suggestion->trend_score }} از ۱۰۰</small></td>
-                        <td>کاتالوگ مقصدها<small>{{ data_get($suggestion->metadata, 'region') === 'domestic' ? 'داخلی' : 'خارجی' }}</small></td>
+                        <td>{{ config("comparison.categories.{$suggestion->category}.plural") }}<small>{{ $suggestion->category === 'tour' ? (data_get($suggestion->metadata, 'region') === 'domestic' ? 'داخلی' : 'خارجی') : 'کاتالوگ مقایسه' }}</small></td>
                         <td><span class="status {{ $suggestion->status === 'created' ? 'success' : ($suggestion->status === 'failed' ? 'failed' : '') }}">{{ match($suggestion->status) {'created' => 'ساخته‌شده', 'processing' => 'در حال پردازش', 'failed' => 'ناموفق', default => 'آماده ساخت'} }}</span></td>
                         <td class="actions">
                             @if ($suggestion->tour)
                                 <a href="{{ route('admin.tours.edit', $suggestion->tour) }}">ویرایش تور</a>
                             @else
-                                <form method="post" action="{{ route('admin.suggestions.store', $suggestion) }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='در حال ساخت…'">@csrf<button class="button compact-button">ایجاد خودکار تور</button></form>
+                                <form method="post" action="{{ route('admin.suggestions.store', $suggestion) }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='در حال ساخت…'">@csrf<button class="button compact-button">ایجاد خودکار صفحه</button></form>
                             @endif
                         </td>
                     </tr>

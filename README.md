@@ -7,7 +7,7 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## Tourbin local setup
+## Geyt local setup
 
 The application uses MySQL. On Ubuntu, install the required server and PHP driver:
 

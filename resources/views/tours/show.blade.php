@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('title', $tour->title . ' | مقایسه قیمت')
+@section('meta')
+    <link rel="canonical" href="{{ $tour->publicUrl() }}">
+    @if($tour->seo_keywords)<meta name="keywords" content="{{ implode(', ', $tour->seo_keywords) }}">@endif
+@endsection
 
 @section('content')
     <section class="tour-hero">
@@ -9,7 +13,7 @@
         @endif
         <div class="tour-hero-overlay"></div>
         <div class="container tour-hero-content">
-            <a href="{{ route('home') }}" class="back-link">همه تورها ←</a>
+            <a href="{{ route($tour->categoryConfig('route').'.index') }}" class="back-link">همه {{ $tour->categoryPlural() }} ←</a>
             <h1>{{ $tour->title }}</h1>
             <p>{{ $tour->excerpt }}</p>
         </div>
@@ -17,9 +21,16 @@
 
     <div class="container detail-layout section-space">
         <article class="tour-content">
-            <span class="eyebrow">درباره این سفر</span>
-            <h2>جزئیات تور</h2>
+            <span class="eyebrow">درباره این {{ $tour->categoryLabel() }}</span>
+            <h2>جزئیات {{ $tour->categoryLabel() }}</h2>
             <div class="prose">{!! nl2br(e($tour->description)) !!}</div>
+            @if($tour->seo_keywords)
+                <p class="seo-keyword-intro">
+                    در همین صفحه می‌توانید قیمت و پیشنهادهای مرتبط با
+                    {{ implode('، ', $tour->seo_keywords) }}
+                    را یکجا بررسی کنید.
+                </p>
+            @endif
 
             @if ($tour->gallery)
                 <div class="gallery">
@@ -90,14 +101,14 @@
                         <div class="price-action">
                             <strong>{{ number_format($source->latest_price) }} <small>{{ $source->currency }}</small></strong>
                             @if(!$source->agency || $source->agency->canAffordClick())
-                                <a href="{{ route('outbound.click', $source) }}" target="_blank" rel="nofollow sponsored noopener">خرید تور ↗</a>
+                                <a href="{{ route('outbound.click', $source) }}" target="_blank" rel="nofollow sponsored noopener">مشاهده پیشنهاد ↗</a>
                             @else
                                 <span class="buy-disabled">اعتبار ارائه‌دهنده کافی نیست</span>
                             @endif
                         </div>
                     </div>
                 @empty
-                    <div class="empty-state compact"><p>هنوز قیمت معتبری برای این تور ثبت نشده است.</p></div>
+                    <div class="empty-state compact"><p>هنوز قیمت معتبری برای این {{ $tour->categoryLabel() }} ثبت نشده است.</p></div>
                 @endforelse
             </div>
             <p class="comparison-note">قیمت‌ها ممکن است در سایت فروشنده تغییر کنند؛ مبلغ نهایی را پیش از خرید بررسی کنید.</p>
@@ -109,7 +120,7 @@
                 <div class="price-alert-box">
                     <span class="eyebrow">هنوز گران است؟</span>
                     <h3>خبرم کن ارزان‌تر شد</h3>
-                    <p>اگر قیمت این تور از {{ number_format($alertOffer->latest_price) }} {{ $alertOffer->currency }} کمتر شد، پیام می‌دهیم.</p>
+                    <p>اگر قیمت این {{ $tour->categoryLabel() }} از {{ number_format($alertOffer->latest_price) }} {{ $alertOffer->currency }} کمتر شد، پیام می‌دهیم.</p>
                     <form action="{{ route('price-alerts.store', $tour) }}" method="post">
                         @csrf
                         <div class="alert-phone-row">
@@ -152,7 +163,7 @@
             @include('advertisements._banner', ['advertisement' => $trendTopAd, 'class' => 'trend-top-ad'])
         @endif
         <div class="section-head">
-            <div><span class="eyebrow">روند تغییرات</span><h2>سابقه قیمت این تور</h2></div>
+            <div><span class="eyebrow">روند تغییرات</span><h2>سابقه قیمت این {{ $tour->categoryLabel() }}</h2></div>
             <span class="muted">کمترین قیمت در ۳۰ روز دارای داده اخیر</span>
         </div>
         @include('tours._trend', ['trend' => $priceTrend])

@@ -5,8 +5,8 @@
 @section('content')
     <section class="container admin-page narrow">
         <div class="section-head">
-            <div><span class="eyebrow">مدیریت تور</span><h1>{{ $tour->title }}</h1></div>
-            <div class="actions"><a href="{{ route('tours.show', $tour) }}" target="_blank">نمایش صفحه</a><a href="{{ route('admin.tours.index') }}">بازگشت</a></div>
+            <div><span class="eyebrow">مدیریت {{ $tour->categoryLabel() }}</span><h1>{{ $tour->title }}</h1></div>
+            <div class="actions"><a href="{{ $tour->publicUrl() }}" target="_blank">نمایش صفحه</a><a href="{{ route('admin.tours.index') }}">بازگشت</a></div>
         </div>
 
         <form class="panel admin-form" action="{{ route('admin.tours.update', $tour) }}" method="post" enctype="multipart/form-data">

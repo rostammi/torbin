@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'توربین | مقایسه قیمت تورها')
+@section('title', $categoryConfig ? 'مقایسه قیمت '.$categoryConfig['plural'].' | گیت' : 'گیت | مقایسه خدمات سفر')
 
 @section('content')
     <section class="hero">
         <div class="container hero-content">
             <div>
-                <span class="eyebrow">سفر بهتر، با قیمت بهتر</span>
-                <h1>قیمت تورها را یک‌جا<br>مقایسه کنید</h1>
-                <p>به‌جای گشتن بین ده‌ها سایت، پیشنهادها را از ارزان‌ترین تا گران‌ترین ببینید و مستقیم خرید کنید.</p>
+                <span class="eyebrow">{{ $categoryConfig ? $categoryConfig['plural'] : 'سفر بهتر، با قیمت بهتر' }}</span>
+                <h1>{{ $categoryConfig['hero'] ?? 'خدمات سفر را یک‌جا مقایسه کنید' }}</h1>
+                <p>به‌جای گشتن بین ده‌ها سایت، پیشنهادهای معتبر را کنار هم ببینید و مستقیم از ارائه‌دهنده خرید کنید.</p>
             </div>
             <div class="hero-orbit" aria-hidden="true"><span>✈</span></div>
         </div>
@@ -16,33 +16,41 @@
 
     @include('advertisements._slider', ['advertisements' => $homeSliderAds])
 
-    <section class="container section-space">
-        <div class="section-head">
-            <div>
-                <span class="eyebrow">مقصد بعدی</span>
-                <h2>تورهای قابل مقایسه</h2>
+    @if($categoryConfig)
+        <section class="container section-space">
+            <div class="section-head">
+                <div><span class="eyebrow">{{ $categoryConfig['label'] }}</span><h2>{{ $categoryConfig['plural'] }} قابل مقایسه</h2></div>
+                <span class="muted">{{ number_format($tours->total()) }} {{ $categoryConfig['label'] }}</span>
             </div>
-            <span class="muted">{{ number_format($tours->total()) }} تور</span>
-        </div>
-
-        <div class="tour-grid">
-            @forelse ($tours as $tour)
-                @include('tours._card')
-                @if(($loop->iteration % 9 === 0 || $loop->last) && $homeInlineAds->isNotEmpty())
-                    @php($slotIndex = min(intdiv($loop->iteration - 1, 9), $homeInlineAds->count() - 1))
-                    @include('advertisements._banner', ['advertisement' => $homeInlineAds[$slotIndex], 'class' => 'ad-banner-grid'])
-                @endif
-            @empty
-                <div class="empty-state">
-                    <span>🧭</span>
-                    <h3>هنوز توری منتشر نشده است</h3>
-                    <p>به‌زودی پیشنهادهای سفر اینجا نمایش داده می‌شوند.</p>
+            <div class="tour-grid">
+                @forelse ($tours as $tour)
+                    @include('tours._card')
+                @empty
+                    <div class="empty-state"><span>{{ $categoryConfig['icon'] }}</span><h3>هنوز موردی منتشر نشده است</h3><p>پیشنهادهای معتبر این دسته در حال بررسی هستند.</p></div>
+                @endforelse
+            </div>
+            {{ $tours->links() }}
+        </section>
+    @else
+        @foreach($categorySections as $section)
+            <section class="container category-home-section {{ $loop->first ? 'section-space' : '' }}">
+                <div class="section-head">
+                    <div><span class="eyebrow">{{ $section['config']['label'] }}</span><h2>پیشنهادهای {{ $section['config']['plural'] }}</h2></div>
+                    <a class="button button-secondary" href="{{ route($section['config']['route'].'.index') }}">مشاهده همه {{ $section['config']['plural'] }} ←</a>
                 </div>
-            @endforelse
-        </div>
-
-        {{ $tours->links() }}
-    </section>
+                <div class="tour-grid">
+                    @forelse($section['items'] as $tour)
+                        @include('tours._card')
+                    @empty
+                        <div class="empty-state"><span>{{ $section['config']['icon'] }}</span><h3>در حال آماده‌سازی</h3><p>پیشنهادهای این دسته پس از تکمیل قیمت و تصویر نمایش داده می‌شوند.</p></div>
+                    @endforelse
+                </div>
+                @if($homeInlineAds->has($loop->index))
+                    @include('advertisements._banner', ['advertisement' => $homeInlineAds[$loop->index], 'class' => 'ad-banner-grid'])
+                @endif
+            </section>
+        @endforeach
+    @endif
 @endsection
 
 @push('scripts')

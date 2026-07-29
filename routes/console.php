@@ -5,7 +5,7 @@ use App\Models\PriceSource;
 use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Services\Alerts\PriceAlertNotifier;
-use App\Services\Discovery\PopularTourDiscovery;
+use App\Services\Discovery\ComparisonCatalogDiscovery;
 use App\Services\PriceCrawler;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -44,17 +44,17 @@ Artisan::command('content:crawl {tour?}', function (PriceCrawler $crawler) {
 
 Schedule::command('content:crawl')->dailyAt('02:30')->withoutOverlapping();
 
-Artisan::command('tours:discover', function (PopularTourDiscovery $discovery) {
+Artisan::command('tours:discover', function (ComparisonCatalogDiscovery $discovery) {
     $run = SyncRun::create(['type' => 'discover_tours', 'started_at' => now()]);
     try {
         $result = $discovery->discover();
         $run->update(['status' => 'success', 'total' => $result['total'], 'successful' => $result['total'], 'details' => $result, 'finished_at' => now()]);
-        $this->info("Discovered {$result['total']} tour suggestions ({$result['trends_received']} Google Trends items received).");
+        $this->info("Discovered {$result['total']} comparison suggestions across all categories.");
     } catch (Throwable $exception) {
         $run->update(['status' => 'failed', 'error' => $exception->getMessage(), 'finished_at' => now()]);
         throw $exception;
     }
-})->purpose('Refresh popular tour suggestions from trends and internal demand');
+})->purpose('Refresh tour, hotel, stay and visa comparison suggestions');
 
 Schedule::command('tours:discover')->dailyAt('01:30')->withoutOverlapping();
 

@@ -3,7 +3,16 @@
 @endif
 
 <div class="form-grid">
-    <label>نام تور *<input name="title" value="{{ old('title', $tour->title) }}" required placeholder="مثلاً تور شیراز"></label>
+    <label>دسته *
+        <select name="category" required>
+            @foreach(config('comparison.categories') as $key => $category)
+                <option value="{{ $key }}" @selected(old('category', $tour->category ?: 'tour') === $key)>{{ $category['label'] }}</option>
+            @endforeach
+        </select>
+    </label>
+    <label>نام صفحه *<input name="title" value="{{ old('title', $tour->title) }}" required placeholder="مثلاً هتل مشهد"></label>
+</div>
+<div class="form-grid">
     <label>آدرس انگلیسی<input name="slug" dir="ltr" value="{{ old('slug', $tour->slug) }}" placeholder="shiraz-tour"></label>
 </div>
 <label>توضیح کوتاه<textarea name="excerpt" rows="2" maxlength="300" placeholder="متنی که روی کارت تور نمایش داده می‌شود">{{ old('excerpt', $tour->excerpt) }}</textarea></label>

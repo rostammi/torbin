@@ -19,13 +19,14 @@ class ProvisionAllSuggestedTours implements ShouldQueue
 
     public bool $failOnTimeout = true;
 
-    public function __construct(public int $runId) {}
+    public function __construct(public int $runId, public ?string $category = null) {}
 
     public function handle(TourProvisioner $provisioner): void
     {
         $run = SyncRun::findOrFail($this->runId);
         $query = TourSuggestion::query()
-            ->where('source', 'destination_catalog')
+            ->where('source', 'like', '%_catalog')
+            ->when($this->category, fn ($query) => $query->where('category', $this->category))
             ->orderBy('id');
 
         $run->update([

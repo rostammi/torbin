@@ -22,7 +22,7 @@ class OutboundClickController extends Controller
 
         $click = $billing->registerClick($source->fresh(), $request);
         if ($click->status === 'insufficient_credit') {
-            return redirect()->route('tours.show', $source->tour)
+            return redirect()->to($source->tour->publicUrl())
                 ->with('error', 'اعتبار این ارائه‌دهنده تمام شده و انتقال به سایت آن موقتاً غیرفعال است.');
         }
 

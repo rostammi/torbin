@@ -18,6 +18,7 @@ class TourSearch
                 $query->where('title', 'like', $like)
                     ->orWhere('excerpt', 'like', $like)
                     ->orWhere('description', 'like', $like)
+                    ->orWhere('seo_keywords', 'like', $like)
                     ->orWhereHas('priceSources', fn (Builder $source) => $source
                         ->where('is_active', true)
                         ->funded()

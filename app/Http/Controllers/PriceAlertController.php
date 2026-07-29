@@ -68,7 +68,7 @@ class PriceAlertController extends Controller
 
         $alert->update(['is_active' => false]);
 
-        return redirect()->route('tours.show', $alert->tour)->with('success', 'هشدار کاهش قیمت لغو شد.');
+        return redirect()->to($alert->tour->publicUrl())->with('success', 'هشدار کاهش قیمت لغو شد.');
     }
 
     private function normalizePhone(string $phone): string

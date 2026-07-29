@@ -18,22 +18,38 @@ class TourAutomationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_discovery_builds_at_least_one_hundred_catalog_suggestions_for_each_region(): void
+    public function test_discovery_builds_one_page_per_destination_with_all_keyword_variants(): void
     {
         Http::fake();
 
         $result = app(PopularTourDiscovery::class)->discover(120);
+        $domesticCount = count(PopularTourDiscovery::DOMESTIC_DESTINATIONS);
+        $foreignCount = count(PopularTourDiscovery::FOREIGN_DESTINATIONS);
 
-        $this->assertSame(240, $result['total']);
-        $this->assertSame(120, $result['domestic_total']);
-        $this->assertSame(120, $result['foreign_total']);
+        $this->assertSame($domesticCount + $foreignCount, $result['total']);
+        $this->assertSame($domesticCount, $result['domestic_total']);
+        $this->assertSame($foreignCount, $result['foreign_total']);
         $this->assertDatabaseHas('tour_suggestions', [
             'keyword' => 'تور کیش',
             'source' => 'destination_catalog',
         ]);
-        $this->assertSame(120, TourSuggestion::where('metadata->region', 'domestic')->count());
-        $this->assertSame(120, TourSuggestion::where('metadata->region', 'foreign')->count());
+        $kish = TourSuggestion::where('destination', 'کیش')->sole();
+        $this->assertSame('main', $kish->metadata['variant']);
+        $this->assertSame([
+            'تور کیش',
+            'تور کیش ارزان',
+            'تور کیش لحظه آخری',
+            'تور کیش اقساطی',
+            'تور هوایی کیش',
+            'تور کیش از تهران',
+        ], $kish->metadata['keywords']);
+        $this->assertSame($domesticCount, TourSuggestion::where('metadata->region', 'domestic')->count());
+        $this->assertSame($foreignCount, TourSuggestion::where('metadata->region', 'foreign')->count());
         $this->assertSame(0, TourSuggestion::where('source', '!=', 'destination_catalog')->count());
+
+        app(PopularTourDiscovery::class)->discover(120);
+        $this->assertSame($domesticCount + $foreignCount, TourSuggestion::count());
+        $this->assertSame(1, TourSuggestion::where('destination', 'کیش')->count());
         Http::assertNothingSent();
     }
 
@@ -46,7 +62,11 @@ class TourAutomationTest extends TestCase
             ->assertOk()
             ->assertSee('مقصدهای داخلی')
             ->assertSee('مقصدهای خارجی')
-            ->assertSee('100 پیشنهاد')
+            ->assertSee('103 پیشنهاد')
+            ->assertSee('هتل‌ها')
+            ->assertSee('اقامتگاه‌ها')
+            ->assertSee('ویزاها')
+            ->assertSee('6 کلیدواژه در یک صفحه مقصد')
             ->assertSee('ساخت/به‌روزرسانی همه')
             ->assertSee('قبلی')
             ->assertSee('بعدی')

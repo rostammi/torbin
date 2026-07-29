@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Models\PriceSource;
 use App\Models\SyncRun;
 use App\Models\Tour;
-use App\Services\Discovery\PopularTourDiscovery;
+use App\Services\Discovery\ComparisonCatalogDiscovery;
 use App\Services\Images\TourImageCrawler;
 use App\Services\PriceCrawler;
 use App\Services\TourPriceUpdater;
@@ -28,10 +28,9 @@ class RunAutomationSync implements ShouldQueue
     public function handle(
         PriceCrawler $crawler,
         TourPriceUpdater $priceUpdater,
-        PopularTourDiscovery $discovery,
+        ComparisonCatalogDiscovery $discovery,
         TourImageCrawler $images,
-    ): void
-    {
+    ): void {
         $run = SyncRun::findOrFail($this->runId);
         try {
             $details = [];

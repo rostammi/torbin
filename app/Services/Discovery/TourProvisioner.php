@@ -33,15 +33,19 @@ class TourProvisioner
 
             if ($created) {
                 $tour = Tour::create([
+                    'category' => $suggestion->category ?: 'tour',
                     'title' => $suggestion->suggested_title,
                     'slug' => $slug,
-                    'excerpt' => "مقایسه قیمت {$suggestion->keyword} بین معتبرترین سایت‌های فروش تور، همراه با آخرین قیمت و امتیاز.",
-                    'description' => "برای انتخاب {$suggestion->keyword}، قیمت و جزئیات پیشنهادهای آژانس‌های مختلف را در این صفحه مقایسه کنید. اطلاعات قیمت و محتوای سفر به‌صورت دوره‌ای از سایت‌های ارائه‌دهنده به‌روزرسانی می‌شود.",
+                    'excerpt' => "مقایسه قیمت {$suggestion->keyword} بین معتبرترین سایت‌های ارائه‌دهنده، همراه با آخرین قیمت و امتیاز.",
+                    'description' => "برای انتخاب {$suggestion->keyword}، قیمت و جزئیات پیشنهادهای سایت‌های مختلف را در این صفحه مقایسه کنید. اطلاعات قیمت و محتوا به‌صورت دوره‌ای از ارائه‌دهنده‌ها به‌روزرسانی می‌شود.",
+                    'seo_keywords' => data_get($suggestion->metadata, 'keywords', [$suggestion->keyword]),
                     'is_active' => false,
                 ]);
             }
 
+            $tour->update(['category' => $suggestion->category ?: 'tour']);
             $this->providers->attach($tour, (string) $destination);
+            $tour->update(['seo_keywords' => data_get($suggestion->metadata, 'keywords', [$suggestion->keyword])]);
             $suggestion->update(['status' => 'processing', 'tour_id' => $tour->id]);
 
             return [$tour, $created];

@@ -20,6 +20,17 @@ class TourSlugGenerator
     {
         $destination = $suggestion->destination ?: preg_replace('/^تور\s+/u', '', $suggestion->keyword);
         $destinationSlug = $this->destinationSlug((string) $destination);
+        $category = $suggestion->category ?: 'tour';
+        if ($category !== 'tour') {
+            $suffix = match ($category) {
+                'hotel' => 'hotels',
+                'stay' => 'stays',
+                'visa' => 'visa',
+                default => 'compare',
+            };
+
+            return $this->unique("{$destinationSlug}-{$suffix}", $tour);
+        }
         $variant = (string) data_get($suggestion->metadata, 'variant', $this->variantFromTitle($suggestion->keyword));
         $base = $variant === 'from_tehran'
             ? "{$destinationSlug}-tour-from-tehran"
@@ -34,11 +45,22 @@ class TourSlugGenerator
 
         return $suggestion
             ? $this->forSuggestion($suggestion, $tour)
-            : $this->unique($this->fromTitle($tour->title), $tour);
+            : $this->unique($this->fromTitle($tour->title, $tour->category), $tour);
     }
 
-    public function fromTitle(string $title): string
+    public function fromTitle(string $title, string $category = 'tour'): string
     {
+        if ($category !== 'tour') {
+            $subject = preg_replace('/(?:^|\s)(?:هتل|رزرو|اقامتگاه|بوم‌گردی|ارزان|ویزا|ویزای|قیمت|شرایط|اخذ|مقایسه|هزینه|خدمات)(?=\s|$)|[|\-–—].*$/u', ' ', $title);
+            $suffix = match ($category) {
+                'hotel' => 'hotels',
+                'stay' => 'stays',
+                'visa' => 'visa',
+                default => 'compare',
+            };
+
+            return $this->destinationSlug(trim((string) $subject))."-{$suffix}";
+        }
         $destination = preg_replace(
             '/(?:^|\s)(?:تور|ارزان|لحظه آخری|اقساطی|هوایی|مقایسه قیمت|خرید|از تهران)(?=\s|$)|[|\-–—].*$/u',
             ' ',

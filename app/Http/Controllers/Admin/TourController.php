@@ -22,28 +22,32 @@ use Throwable;
 
 class TourController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $category = array_key_exists($request->string('category')->toString(), config('comparison.categories'))
+            ? $request->string('category')->toString()
+            : null;
         $tours = Tour::withCount([
             'priceSources',
             'priceSources as priced_sources_count' => fn ($query) => $query
                 ->where('is_active', true)
                 ->where('latest_price', '>', 0),
-        ])->latest()->paginate(15);
+        ])->when($category, fn ($query) => $query->where('category', $category))
+            ->latest()->paginate(15)->withQueryString();
 
-        return view('admin.tours.index', compact('tours'));
+        return view('admin.tours.index', compact('tours', 'category'));
     }
 
     public function create(): View
     {
-        return view('admin.tours.create', ['tour' => new Tour]);
+        return view('admin.tours.create', ['tour' => new Tour(['category' => request('category', 'tour')])]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $tour = Tour::create($this->validated($request));
 
-        return redirect()->route('admin.tours.edit', $tour)->with('success', 'تور ساخته شد؛ حالا منابع قیمت را اضافه کنید.');
+        return redirect()->route('admin.tours.edit', $tour)->with('success', 'صفحه مقایسه ساخته شد؛ حالا منابع قیمت را اضافه کنید.');
     }
 
     public function edit(Tour $tour): View
@@ -61,7 +65,7 @@ class TourController extends Controller
             $tour->slugRedirects()->updateOrCreate(['old_slug' => $oldSlug]);
         }
 
-        return redirect()->route('admin.tours.edit', $tour)->with('success', 'اطلاعات تور ذخیره شد.');
+        return redirect()->route('admin.tours.edit', $tour)->with('success', 'اطلاعات صفحه مقایسه ذخیره شد.');
     }
 
     public function destroy(Tour $tour): RedirectResponse
@@ -206,15 +210,22 @@ class TourController extends Controller
     private function validated(Request $request, ?Tour $tour = null): array
     {
         $requestedSlug = trim((string) $request->input('slug'));
-        $request->merge(['slug' => $requestedSlug !== ''
-            ? Str::slug($requestedSlug)
-            : app(TourSlugGenerator::class)->unique(
-                app(TourSlugGenerator::class)->fromTitle((string) $request->input('title')),
-                $tour,
-            )]);
+        $request->merge([
+            'category' => $request->input('category', $tour?->category ?: 'tour'),
+            'slug' => $requestedSlug !== ''
+                ? Str::slug($requestedSlug)
+                : app(TourSlugGenerator::class)->unique(
+                    app(TourSlugGenerator::class)->fromTitle(
+                        (string) $request->input('title'),
+                        (string) $request->input('category', $tour?->category ?: 'tour'),
+                    ),
+                    $tour,
+                ),
+        ]);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:150'],
+            'category' => ['required', Rule::in(array_keys(config('comparison.categories')))],
             'slug' => ['required', 'string', 'max:160', Rule::unique('tours')->ignore($tour)],
             'excerpt' => ['nullable', 'string', 'max:300'],
             'description' => ['required', 'string'],

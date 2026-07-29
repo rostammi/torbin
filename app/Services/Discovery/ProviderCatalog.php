@@ -8,7 +8,10 @@ class ProviderCatalog
 {
     public function attach(Tour $tour, string $destination, int $limit = 10): int
     {
-        $providers = collect(config('crawler.providers', []))->take(max(4, min($limit, count(config('crawler.providers', [])))));
+        $configured = $tour->category === 'tour'
+            ? config('crawler.providers', [])
+            : config("comparison.providers.{$tour->category}", []);
+        $providers = collect($configured)->take(min($limit, count($configured)));
 
         foreach ($providers as $provider) {
             $this->attachProvider($tour, $destination, $provider);

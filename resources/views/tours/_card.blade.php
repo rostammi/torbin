@@ -1,5 +1,5 @@
 <article class="tour-card">
-    <a href="{{ route('tours.show', $tour) }}" class="card-image">
+    <a href="{{ $tour->publicUrl() }}" class="card-image">
         @if ($tour->cover_image)
             <img src="{{ Storage::url($tour->cover_image) }}" alt="{{ $tour->title }}">
         @else
@@ -8,7 +8,7 @@
         <span class="source-badge">مقایسه {{ $tour->compared_sources_count }} سایت</span>
     </a>
     <div class="card-body">
-        <h3><a href="{{ route('tours.show', $tour) }}">{{ $tour->title }}</a></h3>
+        <h3><a href="{{ $tour->publicUrl() }}">{{ $tour->title }}</a></h3>
         <p>{{ $tour->excerpt ?: Str::limit(strip_tags($tour->description), 95) }}</p>
         <div class="card-footer">
             <div>
@@ -21,7 +21,7 @@
                     <strong class="pending">در حال بررسی</strong>
                 @endif
             </div>
-            <a class="circle-link" href="{{ route('tours.show', $tour) }}" aria-label="مشاهده">←</a>
+            <a class="circle-link" href="{{ $tour->publicUrl() }}" aria-label="مشاهده">←</a>
         </div>
     </div>
 </article>

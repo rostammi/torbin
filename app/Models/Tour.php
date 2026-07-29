@@ -12,8 +12,8 @@ class Tour extends Model
     use HasFactory;
 
     protected $fillable = [
-        'title', 'slug', 'excerpt', 'description', 'auto_content', 'auto_content_updated_at',
-        'cover_image', 'gallery', 'image_sources', 'video_url', 'is_active',
+        'category', 'title', 'slug', 'excerpt', 'description', 'auto_content', 'auto_content_updated_at',
+        'seo_keywords', 'cover_image', 'gallery', 'image_sources', 'video_url', 'is_active',
     ];
 
     protected function casts(): array
@@ -22,6 +22,7 @@ class Tour extends Model
             'gallery' => 'array',
             'image_sources' => 'array',
             'auto_content' => 'array',
+            'seo_keywords' => 'array',
             'auto_content_updated_at' => 'datetime',
             'is_active' => 'boolean',
         ];
@@ -30,6 +31,33 @@ class Tour extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    public function categoryConfig(?string $key = null): mixed
+    {
+        $config = config("comparison.categories.{$this->category}", config('comparison.categories.tour'));
+
+        return $key ? data_get($config, $key) : $config;
+    }
+
+    public function categoryLabel(): string
+    {
+        return (string) $this->categoryConfig('label');
+    }
+
+    public function categoryPlural(): string
+    {
+        return (string) $this->categoryConfig('plural');
+    }
+
+    public function publicRouteName(): string
+    {
+        return (string) $this->categoryConfig('route').'.show';
+    }
+
+    public function publicUrl(): string
+    {
+        return route($this->publicRouteName(), $this);
     }
 
     public function resolveRouteBinding($value, $field = null)
@@ -55,6 +83,11 @@ class Tour extends Model
     public function slugRedirects(): HasMany
     {
         return $this->hasMany(TourSlugRedirect::class);
+    }
+
+    public function suggestions(): HasMany
+    {
+        return $this->hasMany(TourSuggestion::class);
     }
 
     public function priceAlerts(): HasMany

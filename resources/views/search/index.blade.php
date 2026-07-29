@@ -14,7 +14,7 @@
         @endif
 
         <form class="search-page-form" action="{{ route('search.index') }}" method="get">
-            <input type="search" name="q" value="{{ $term }}" placeholder="نام تور، آژانس یا بخشی از توضیحات" minlength="3" required autofocus>
+            <input type="search" name="q" value="{{ $term }}" placeholder="نام تور، هتل، اقامتگاه، ویزا یا آژانس" minlength="3" required autofocus>
             <button class="button">جست‌وجو</button>
         </form>
 

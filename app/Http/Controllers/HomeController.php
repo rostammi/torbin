@@ -14,8 +14,35 @@ class HomeController extends Controller
 {
     public function index(AdvertisementManager $advertisements): View
     {
+        $categorySections = collect(config('comparison.categories'))->map(function (array $config, string $category) {
+            $items = Tour::query()
+                ->published()
+                ->where('category', $category)
+                ->withPublicPricing()
+                ->orderByDesc('compared_sources_count')
+                ->latest()
+                ->limit(6)
+                ->get();
+
+            return ['key' => $category, 'config' => $config, 'items' => $items];
+        });
+        $homeSliderAds = $advertisements->forPlacement('home_slider', 8);
+        $homeInlineAds = $advertisements->forPlacement('home_inline', 4);
+        $category = $categoryConfig = null;
+
+        return view('home', compact('categorySections', 'homeSliderAds', 'homeInlineAds', 'category', 'categoryConfig'));
+    }
+
+    public function category(Request $request, AdvertisementManager $advertisements): View
+    {
+        return $this->listing($advertisements, (string) $request->route('category_key'));
+    }
+
+    private function listing(AdvertisementManager $advertisements, ?string $category = null): View
+    {
         $tours = Tour::query()
             ->published()
+            ->when($category, fn ($query) => $query->where('category', $category))
             ->withPublicPricing()
             ->orderByDesc('compared_sources_count')
             ->latest()
@@ -25,7 +52,9 @@ class HomeController extends Controller
             ? collect()
             : $advertisements->forPlacement('home_inline', (int) ceil($tours->count() / 9));
 
-        return view('home', compact('tours', 'homeSliderAds', 'homeInlineAds'));
+        $categoryConfig = $category ? config("comparison.categories.{$category}") : null;
+
+        return view('home', compact('tours', 'homeSliderAds', 'homeInlineAds', 'category', 'categoryConfig'));
     }
 
     public function show(
@@ -33,10 +62,11 @@ class HomeController extends Controller
         Tour $tour,
         TourViewTracker $views,
         AdvertisementManager $advertisements,
-    ): RedirectResponse|View
-    {
+    ): RedirectResponse|View {
+        $requestedCategory = (string) ($request->route('category_key') ?: 'tour');
+        abort_unless($tour->category === $requestedCategory, 404);
         if ($tour->getAttribute('resolved_from_slug')) {
-            return redirect()->route('tours.show', $tour, 301);
+            return redirect()->to($tour->publicUrl(), 301);
         }
 
         abort_unless($tour->is_active, 404);

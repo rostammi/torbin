@@ -25,26 +25,33 @@ class PublicToursTest extends TestCase
         $this->get('/')->assertOk()->assertSee('تور شیراز')->assertSee('7,000,000')->assertDontSee('پیش‌نویس');
     }
 
-    public function test_home_uses_compact_persian_pagination(): void
+    public function test_home_shows_at_most_six_items_from_each_of_the_four_categories(): void
     {
-        foreach (range(1, 13) as $number) {
-            Tour::create([
-                'title' => "تور صفحه اصلی {$number}",
-                'slug' => "home-tour-{$number}",
-                'description' => 'توضیحات تور',
-                'is_active' => true,
-            ]);
+        foreach (array_keys(config('comparison.categories')) as $category) {
+            foreach (range(1, 7) as $number) {
+                Tour::create([
+                    'category' => $category,
+                    'title' => "{$category} پیشنهاد {$number}",
+                    'slug' => "{$category}-home-{$number}",
+                    'description' => 'توضیحات',
+                    'is_active' => true,
+                ]);
+            }
         }
 
         $response = $this->get(route('home'))
             ->assertOk()
-            ->assertSee('نمایش 1 تا 12 از 13 نتیجه')
-            ->assertSee('قبلی')
-            ->assertSee('بعدی')
-            ->assertDontSee('pagination.previous')
-            ->assertDontSee('pagination.next');
+            ->assertSee('پیشنهادهای تورها')
+            ->assertSee('پیشنهادهای هتل‌ها')
+            ->assertSee('پیشنهادهای اقامتگاه‌ها')
+            ->assertSee('پیشنهادهای ویزاها')
+            ->assertSee('مشاهده همه هتل‌ها')
+            ->assertDontSee('tour پیشنهاد 7')
+            ->assertDontSee('hotel پیشنهاد 7')
+            ->assertDontSee('stay پیشنهاد 7')
+            ->assertDontSee('visa پیشنهاد 7');
 
-        $response->assertDontSee('<svg', false);
+        $this->assertSame(24, substr_count($response->getContent(), '<article class="tour-card">'));
     }
 
     public function test_home_sorts_tours_by_compared_site_count_descending(): void
@@ -83,7 +90,7 @@ class PublicToursTest extends TestCase
             ->assertOk()
             ->assertSee('مقایسه 3 سایت')
             ->assertSee('مقایسه 1 سایت')
-            ->assertViewHas('tours', fn ($tours) => $tours->pluck('id')->all() === [
+            ->assertViewHas('categorySections', fn ($sections) => $sections->get('tour')['items']->pluck('id')->all() === [
                 $mostCompared->id,
                 $leastCompared->id,
             ]);
