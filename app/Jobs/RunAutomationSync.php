@@ -8,6 +8,7 @@ use App\Models\Tour;
 use App\Services\Discovery\PopularTourDiscovery;
 use App\Services\Images\TourImageCrawler;
 use App\Services\PriceCrawler;
+use App\Services\TourPriceUpdater;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -24,7 +25,12 @@ class RunAutomationSync implements ShouldQueue
 
     public function __construct(public int $runId) {}
 
-    public function handle(PriceCrawler $crawler, PopularTourDiscovery $discovery, TourImageCrawler $images): void
+    public function handle(
+        PriceCrawler $crawler,
+        TourPriceUpdater $priceUpdater,
+        PopularTourDiscovery $discovery,
+        TourImageCrawler $images,
+    ): void
     {
         $run = SyncRun::findOrFail($this->runId);
         try {
@@ -37,11 +43,34 @@ class RunAutomationSync implements ShouldQueue
                 $successful += $result['total'];
             }
             if (in_array($run->type, ['prices', 'all'], true)) {
-                $sources = PriceSource::where('is_active', true)->where('extraction_type', '!=', 'manual')->get();
-                $ok = $sources->filter(fn ($source) => $crawler->crawl($source))->count();
-                $details['prices'] = ['total' => $sources->count(), 'successful' => $ok];
-                $total += $sources->count();
-                $successful += $ok;
+                $tours = Tour::query()->get();
+                $priceSummary = [
+                    'tours' => $tours->count(),
+                    'checked' => 0,
+                    'crawl_successful' => 0,
+                    'failed_sources_removed' => 0,
+                    'fallback_checked' => 0,
+                    'with_minimum_prices' => 0,
+                    'needs_new_crawler' => [],
+                ];
+                foreach ($tours as $tour) {
+                    $result = $priceUpdater->update($tour);
+                    $priceSummary['checked'] += $result['checked'];
+                    $priceSummary['crawl_successful'] += $result['crawl_successful'];
+                    $priceSummary['failed_sources_removed'] += $result['failed_sources_removed'];
+                    $priceSummary['fallback_checked'] += $result['fallback_checked'];
+                    $priceSummary['with_minimum_prices'] += (int) $result['target_met'];
+                    if ($result['needs_new_crawler']) {
+                        $priceSummary['needs_new_crawler'][] = [
+                            'tour_id' => $tour->id,
+                            'title' => $tour->title,
+                            'prices_found' => $result['prices_found'],
+                        ];
+                    }
+                }
+                $details['prices'] = $priceSummary;
+                $total += $priceSummary['checked'] + $tours->count();
+                $successful += $priceSummary['crawl_successful'] + $priceSummary['with_minimum_prices'];
             }
             if (in_array($run->type, ['content', 'all'], true)) {
                 $sources = PriceSource::where('is_active', true)->get();

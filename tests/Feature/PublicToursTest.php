@@ -108,6 +108,42 @@ class PublicToursTest extends TestCase
         $response->assertSee('پیشنهاد ویژه');
     }
 
+    public function test_failed_sources_before_a_free_priced_source_do_not_hide_its_price(): void
+    {
+        $tour = Tour::create([
+            'title' => 'تور مسقط',
+            'slug' => 'muscat-priced-after-errors',
+            'description' => 'توضیحات',
+            'is_active' => true,
+        ]);
+        $tour->priceSources()->createMany([
+            [
+                'provider_name' => 'منبع خطادار اول',
+                'source_url' => 'https://example.com/failed-1',
+                'extraction_type' => 'structured',
+                'last_status' => 'failed',
+            ],
+            [
+                'provider_name' => 'منبع خطادار دوم',
+                'source_url' => 'https://example.com/failed-2',
+                'extraction_type' => 'structured',
+                'last_status' => 'failed',
+            ],
+            [
+                'provider_name' => 'منبع سالم مسقط',
+                'source_url' => 'https://example.com/muscat',
+                'extraction_type' => 'marketplace_html',
+                'latest_price' => 49_340_400,
+                'last_status' => 'success',
+            ],
+        ]);
+
+        $response = $this->get(route('tours.show', $tour))->assertOk();
+        $response->assertSee('منبع سالم مسقط');
+        $response->assertSee('49,340,400');
+        $response->assertDontSee('هنوز قیمت معتبری برای این تور ثبت نشده است');
+    }
+
     public function test_tour_page_displays_rating_and_price_history(): void
     {
         $tour = Tour::create([

@@ -63,10 +63,14 @@ class PriceSourceController extends Controller
 
     public function crawl(PriceSource $source, PriceCrawler $crawler, PriceAlertNotifier $alerts): RedirectResponse
     {
+        $tour = $source->tour;
         $ok = $crawler->crawl($source);
-        $alerts->notifyForTour($source->tour);
+        $alerts->notifyForTour($tour);
 
-        return back()->with($ok ? 'success' : 'error', $ok ? 'قیمت با موفقیت خوانده شد.' : 'خواندن قیمت ناموفق بود؛ جزئیات را در وضعیت منبع ببینید.');
+        return back()->with(
+            $ok ? 'success' : 'error',
+            $ok ? 'قیمت با موفقیت خوانده شد.' : 'خواندن قیمت ناموفق بود؛ منبع خطادار از این تور حذف شد.'
+        );
     }
 
     private function validated(Request $request): array

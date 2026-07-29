@@ -9,6 +9,7 @@ use App\Services\Crawlers\AlibabaCrawler;
 use App\Services\Crawlers\CrawlResult;
 use App\Services\Crawlers\FlytodayCrawler;
 use App\Services\Crawlers\MarketplaceHtmlCrawler;
+use App\Services\Crawlers\Safar24Crawler;
 use App\Services\Crawlers\SafarmarketCrawler;
 use App\Services\Crawlers\StructuredDataCrawler;
 use Illuminate\Support\Facades\Http;
@@ -22,6 +23,7 @@ class PriceCrawler
         private readonly FlytodayCrawler $flytoday,
         private readonly SafarmarketCrawler $safarmarket,
         private readonly MarketplaceHtmlCrawler $marketplaceHtml,
+        private readonly Safar24Crawler $safar24,
         private readonly StructuredDataCrawler $structured,
         private readonly WebsiteContentExtractor $contentExtractor,
         private readonly TourContentCompiler $contentCompiler,
@@ -65,16 +67,14 @@ class PriceCrawler
 
             return true;
         } catch (Throwable $exception) {
-            $source->update([
-                'last_checked_at' => now(),
-                'last_status' => 'failed',
-                'last_error' => mb_substr($exception->getMessage(), 0, 1000),
-            ]);
+            $tour = $source->tour;
+            $source->delete();
 
-            $this->enrichContent($source->fresh(), new CrawlResult(
-                (int) ($source->latest_price ?? 0),
-                $source->buy_url ?: $source->source_url,
-            ));
+            try {
+                $this->contentCompiler->refresh($tour);
+            } catch (Throwable $contentException) {
+                report($contentException);
+            }
 
             report($exception);
 
@@ -127,6 +127,7 @@ class PriceCrawler
             'flytoday' => $this->flytoday->crawl($source),
             'safarmarket' => $this->safarmarket->crawl($source),
             'marketplace_html' => $this->marketplaceHtml->crawl($source),
+            'safar24' => $this->safar24->crawl($source),
             'structured' => $this->structured->crawl($source),
             'json', 'regex' => $this->extractGeneric($source),
             default => throw new RuntimeException('نوع استخراج پشتیبانی نمی‌شود.'),

@@ -57,18 +57,17 @@ class OfficialCrawlersTest extends TestCase
         $this->assertSame(9_000_000, $source->fresh()->latest_price);
     }
 
-    public function test_content_enrichment_can_succeed_when_the_price_api_fails(): void
+    public function test_failed_price_source_is_removed_from_its_tour(): void
     {
         Http::fake([
             'ws.alibaba.ir/*' => Http::response([], 503),
             '93.184.216.34/*' => Http::response('<main><h2>جاهای دیدنی شیراز</h2></main>', 200, ['Content-Type' => 'text/html']),
         ]);
         $source = $this->source('alibaba', 'https://93.184.216.34/tour/iran-tehran/iran-shiraz?rooms=2');
+        $sourceId = $source->id;
 
         $this->assertFalse(app(PriceCrawler::class)->crawl($source));
-        $this->assertSame('failed', $source->fresh()->last_status);
-        $this->assertSame('جاهای دیدنی شیراز', $source->fresh()->content_insights[0]['title']);
-        $this->assertSame('جاهای دیدنی شیراز', $source->tour->fresh()->auto_content['topics'][0]['title']);
+        $this->assertDatabaseMissing('price_sources', ['id' => $sourceId]);
     }
 
     public function test_safarmarket_combines_both_apis_and_normalizes_their_units(): void
@@ -174,6 +173,23 @@ class OfficialCrawlersTest extends TestCase
         $this->assertSame(8_750_000, $source->fresh()->latest_price);
     }
 
+    public function test_safar24_crawler_selects_only_the_requested_destination_and_lowest_price(): void
+    {
+        Http::fake(['93.184.216.34/*' => Http::response(<<<'HTML'
+            <html><body>
+                <a href="/tour/mashhad">تور مشهد ۳,۲۰۰,۰۰۰ تومان</a>
+                <a href="/tour/kish-premium">تور کیش ویژه ۱۲,۵۰۰,۰۰۰ تومان</a>
+                <a href="/tour/kish-economic">تور کیش اقتصادی ۸,۴۵۰,۰۰۰ تومان</a>
+            </body></html>
+            HTML)]);
+        $source = $this->source('safar24', 'https://93.184.216.34/');
+        $source->update(['selector' => 'کیش']);
+
+        $this->assertTrue(app(PriceCrawler::class)->crawl($source));
+        $this->assertSame(8_450_000, $source->fresh()->latest_price);
+        $this->assertSame('https://93.184.216.34/tour/kish-economic', $source->fresh()->buy_url);
+    }
+
     public function test_provider_catalog_contains_ten_crawlable_tour_sites(): void
     {
         $providers = collect(config('crawler.providers'));
@@ -182,6 +198,7 @@ class OfficialCrawlersTest extends TestCase
         $this->assertCount(10, $providers->pluck('name')->unique());
         $this->assertNotContains('manual', $providers->pluck('type'));
         $this->assertContains('marketplace_html', $providers->pluck('type'));
+        $this->assertContains('safar24', collect(config('crawler.fallback_providers'))->pluck('type'));
     }
 
     private function source(string $type, string $url): PriceSource

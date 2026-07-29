@@ -64,7 +64,7 @@ class TourSuggestionController extends Controller
             $suggestion->refresh();
             if ($suggestion->tour) {
                 return redirect()->route('admin.tours.edit', $suggestion->tour)
-                    ->with('success', 'تور و ارائه‌دهنده‌ها ساخته و کراول اولیه اجرا شد.');
+                    ->with('success', 'صفحه مقایسه تور همراه با ارائه‌دهنده‌ها، قیمت، محتوا و تصاویر ساخته شد.');
             }
 
             return back()->with('success', 'ساخت تور در صف قرار گرفت؛ نتیجه را در مرکز همگام‌سازی ببینید.');
@@ -105,7 +105,7 @@ class TourSuggestionController extends Controller
         try {
             ProvisionAllSuggestedTours::dispatch($run->id);
 
-            return back()->with('success', "جاب ساخت و به‌روزرسانی {$total} پیشنهاد در صف قرار گرفت؛ تورهای موجود فقط به‌روزرسانی می‌شوند.");
+            return back()->with('success', "جاب تکمیل {$total} صفحه مقایسه همراه با قیمت، محتوا و تصاویر در صف قرار گرفت؛ تورهای موجود فقط به‌روزرسانی می‌شوند.");
         } catch (Throwable $exception) {
             $run->update([
                 'status' => 'failed',

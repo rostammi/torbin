@@ -4,15 +4,20 @@ namespace App\Services\Discovery;
 
 use App\Models\Tour;
 use App\Models\TourSuggestion;
+use App\Services\Images\TourImageCrawler;
 use App\Services\PriceCrawler;
+use App\Services\TourPriceUpdater;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Throwable;
 
 class TourProvisioner
 {
     public function __construct(
         private readonly ProviderCatalog $providers,
         private readonly PriceCrawler $crawler,
+        private readonly TourPriceUpdater $priceUpdater,
+        private readonly TourImageCrawler $imageCrawler,
     ) {}
 
     public function provision(TourSuggestion $suggestion): array
@@ -41,20 +46,28 @@ class TourProvisioner
             return [$tour, $created];
         });
 
-        $successful = 0;
+        $priceResult = $this->priceUpdater->update($tour);
+        $successful = $priceResult['crawl_successful'];
         $contentSuccessful = 0;
         foreach ($tour->priceSources()->where('is_active', true)->get() as $source) {
-            if ($this->crawler->crawl($source)) {
-                $successful++;
-            }
-
             if ($this->crawler->crawlContent($source->fresh(), true)) {
                 $contentSuccessful++;
             }
         }
 
+        try {
+            $imageResult = $this->imageCrawler->crawl($tour);
+        } catch (Throwable $exception) {
+            // A comparison page without a cover image is incomplete and must
+            // not remain publicly available when image provisioning fails.
+            $tour->update(['is_active' => false]);
+
+            throw $exception;
+        }
+
+        $tour->refresh();
         $sources = $tour->priceSources()->count();
-        $tour->update(['is_active' => $sources >= 4]);
+        $tour->update(['is_active' => $priceResult['target_met'] && filled($tour->cover_image)]);
         $suggestion->refresh();
         $suggestion->update([
             'status' => 'created',
@@ -62,6 +75,10 @@ class TourProvisioner
                 'provision_action' => $created ? 'created' : 'updated',
                 'crawl_successful' => $successful,
                 'content_successful' => $contentSuccessful,
+                'prices_found' => $priceResult['prices_found'],
+                'fallback_checked' => $priceResult['fallback_checked'],
+                'failed_sources_removed' => $priceResult['failed_sources_removed'],
+                'images_downloaded' => $imageResult['downloaded'],
                 'sources_added' => $sources,
                 'last_provisioned_at' => now()->toIso8601String(),
             ]),
@@ -73,6 +90,10 @@ class TourProvisioner
             'sources' => $sources,
             'crawled' => $successful,
             'content_crawled' => $contentSuccessful,
+            'prices_found' => $priceResult['prices_found'],
+            'fallback_checked' => $priceResult['fallback_checked'],
+            'failed_sources_removed' => $priceResult['failed_sources_removed'],
+            'images_downloaded' => $imageResult['downloaded'],
         ];
     }
 }

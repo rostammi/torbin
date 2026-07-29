@@ -11,6 +11,7 @@ use App\Services\Discovery\PopularTourDiscovery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class TourAutomationTest extends TestCase
@@ -67,16 +68,22 @@ class TourAutomationTest extends TestCase
 
     public function test_admin_can_create_an_active_tour_with_four_automated_providers_in_one_click(): void
     {
+        Storage::fake('public');
+        $this->configureImageCrawlerForTests();
         config()->set('crawler.providers', collect(range(1, 4))->map(fn ($number) => [
             'name' => "ارائه‌دهنده {$number}",
             'type' => 'structured',
             'url' => 'https://93.184.216.34/tours',
         ])->all());
-        Http::fake(['93.184.216.34/*' => Http::response(<<<'HTML'
-            <html><head><script type="application/ld+json">
-            {"@type":"Product","name":"تور کیش","offers":{"@type":"Offer","price":"12500000","url":"https://93.184.216.34/buy"},"aggregateRating":{"@type":"AggregateRating","ratingValue":4.6,"ratingCount":82}}
-            </script></head><body><main><h2>راهنمای سفر به کیش</h2></main></body></html>
-            HTML)]);
+        Http::fake([
+            '93.184.216.34/*' => Http::response(<<<'HTML'
+                <html><head><script type="application/ld+json">
+                {"@type":"Product","name":"تور کیش","offers":{"@type":"Offer","price":"12500000","url":"https://93.184.216.34/buy"},"aggregateRating":{"@type":"AggregateRating","ratingValue":4.6,"ratingCount":82}}
+                </script></head><body><main><h2>راهنمای سفر به کیش</h2></main></body></html>
+                HTML),
+            'commons.wikimedia.org/*' => fn () => Http::response($this->commonsSearchResponse()),
+            'upload.wikimedia.org/*' => fn () => Http::response($this->testPng(), 200, ['Content-Type' => 'image/png']),
+        ]);
         $suggestion = TourSuggestion::create([
             'keyword' => 'تور کیش',
             'suggested_title' => 'تور کیش | مقایسه قیمت',
@@ -95,21 +102,31 @@ class TourAutomationTest extends TestCase
         $this->assertSame(4, $tour->priceSources()->count());
         $this->assertSame(4, $tour->priceSources()->where('latest_price', 12_500_000)->count());
         $this->assertSame(4.6, $tour->priceSources()->first()->latest_rating);
-        $this->assertDatabaseHas('sync_runs', ['type' => 'provision_tour', 'status' => 'success']);
+        $this->assertNotNull($tour->cover_image);
+        Storage::disk('public')->assertExists($tour->cover_image);
+        $run = SyncRun::where('type', 'provision_tour')->sole();
+        $this->assertSame('success', $run->status, json_encode($run->details, JSON_UNESCAPED_UNICODE));
+        $this->assertSame(1, $run->details['images_downloaded']);
     }
 
     public function test_build_all_creates_new_tours_and_only_updates_existing_tours(): void
     {
+        Storage::fake('public');
+        $this->configureImageCrawlerForTests();
         config()->set('crawler.providers', collect(range(1, 4))->map(fn ($number) => [
             'name' => "ارائه‌دهنده {$number}",
             'type' => 'structured',
             'url' => 'https://93.184.216.34/tours',
         ])->all());
-        Http::fake(['93.184.216.34/*' => Http::response(<<<'HTML'
-            <html><head><script type="application/ld+json">
-            {"@type":"Product","name":"تور مقصد","offers":{"@type":"Offer","price":"14900000","url":"https://93.184.216.34/buy"},"aggregateRating":{"@type":"AggregateRating","ratingValue":4.8,"ratingCount":120}}
-            </script></head><body><main><h2>راهنمای کامل سفر</h2><p>برنامه سفر و خدمات تور</p></main></body></html>
-            HTML)]);
+        Http::fake([
+            '93.184.216.34/*' => Http::response(<<<'HTML'
+                <html><head><script type="application/ld+json">
+                {"@type":"Product","name":"تور مقصد","offers":{"@type":"Offer","price":"14900000","url":"https://93.184.216.34/buy"},"aggregateRating":{"@type":"AggregateRating","ratingValue":4.8,"ratingCount":120}}
+                </script></head><body><main><h2>راهنمای کامل سفر</h2><p>برنامه سفر و خدمات تور</p></main></body></html>
+                HTML),
+            'commons.wikimedia.org/*' => fn () => Http::response($this->commonsSearchResponse()),
+            'upload.wikimedia.org/*' => fn () => Http::response($this->testPng(), 200, ['Content-Type' => 'image/png']),
+        ]);
 
         $existingTour = Tour::create([
             'title' => 'عنوان ویرایش‌شده تور موجود',
@@ -143,11 +160,12 @@ class TourAutomationTest extends TestCase
             ->assertSessionHas('success');
 
         $run = SyncRun::where('type', 'provision_all_tours')->sole();
-        $this->assertSame('success', $run->status);
+        $this->assertSame('success', $run->status, json_encode($run->details, JSON_UNESCAPED_UNICODE));
         $this->assertSame(2, $run->total);
         $this->assertSame(2, $run->successful);
         $this->assertSame(1, $run->details['created']);
         $this->assertSame(1, $run->details['updated']);
+        $this->assertSame(2, $run->details['images_downloaded']);
         $this->assertSame(2, Tour::count());
         $this->assertSame($existingTour->id, $existingSuggestion->fresh()->tour_id);
         $this->assertSame('عنوان ویرایش‌شده تور موجود', $existingTour->fresh()->title);
@@ -158,6 +176,8 @@ class TourAutomationTest extends TestCase
             $this->assertSame(4, $tour->priceSources()->where('latest_price', 14_900_000)->count());
             $this->assertSame(4.8, $tour->priceSources()->first()->latest_rating);
             $this->assertNotNull($tour->priceSources()->first()->content_checked_at);
+            $this->assertNotNull($tour->cover_image);
+            Storage::disk('public')->assertExists($tour->cover_image);
         }
     }
 
@@ -187,5 +207,38 @@ class TourAutomationTest extends TestCase
 
         Queue::assertNotPushed(ProvisionAllSuggestedTours::class);
         $this->assertSame(1, SyncRun::where('type', 'provision_all_tours')->count());
+    }
+
+    private function configureImageCrawlerForTests(): void
+    {
+        config()->set('crawler.images.count', 1);
+        config()->set('crawler.images.min_width', 1);
+        config()->set('crawler.images.min_height', 1);
+        config()->set('crawler.images.min_aspect_ratio', 1);
+    }
+
+    private function commonsSearchResponse(): array
+    {
+        return [
+            'query' => ['pages' => [[
+                'title' => 'File:Tour destination.jpg',
+                'imageinfo' => [[
+                    'thumburl' => 'https://upload.wikimedia.org/tour-destination.png',
+                    'width' => 1600,
+                    'height' => 900,
+                    'mime' => 'image/png',
+                    'extmetadata' => [
+                        'Artist' => ['value' => 'عکاس تست'],
+                        'LicenseShortName' => ['value' => 'CC BY-SA 4.0'],
+                        'LicenseUrl' => ['value' => 'https://creativecommons.org/licenses/by-sa/4.0/'],
+                    ],
+                ]],
+            ]]],
+        ];
+    }
+
+    private function testPng(): string
+    {
+        return base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
     }
 }

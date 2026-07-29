@@ -13,21 +13,26 @@ use RuntimeException;
 
 class TourImageCrawler
 {
-    public function crawl(Tour $tour, bool $replace = false): array
+    public function crawl(Tour $tour, bool $replace = false, bool $append = false, ?int $limit = null): array
     {
         $tour->refresh();
 
-        if ($tour->cover_image && ! $replace) {
+        if ($tour->cover_image && ! $replace && ! $append) {
             return ['downloaded' => 0, 'skipped' => true, 'query' => null];
         }
 
         $query = $this->searchQuery($tour);
         $candidates = $this->search($query);
         $images = [];
+        $limit ??= (int) config('crawler.images.count', 4);
 
         foreach ($candidates as $candidate) {
-            if (count($images) >= (int) config('crawler.images.count', 4)) {
+            if (count($images) >= $limit) {
                 break;
+            }
+
+            if ($append && $this->sourceAlreadyExists($tour, $candidate)) {
+                continue;
             }
 
             $image = $this->download($tour, $candidate);
@@ -46,15 +51,14 @@ class TourImageCrawler
             ->filter()
             ->unique();
         $gallery = ($replace ? collect() : collect($tour->gallery ?? []))
-            ->concat($newPaths->skip(1))
+            ->concat($append && $tour->cover_image ? $newPaths : $newPaths->skip(1))
             ->unique()
-            ->take(12)
             ->values()
             ->all();
 
         try {
             $tour->update([
-                'cover_image' => $images[0]['path'],
+                'cover_image' => $append && $tour->cover_image ? $tour->cover_image : $images[0]['path'],
                 'gallery' => $gallery,
                 'image_sources' => ($replace ? collect() : collect($tour->image_sources ?? []))
                     ->concat($images)
@@ -72,7 +76,22 @@ class TourImageCrawler
             Storage::disk('public')->delete($oldPaths->diff($newPaths)->all());
         }
 
-        return ['downloaded' => count($images), 'replaced' => $replace, 'skipped' => false, 'query' => $query];
+        return [
+            'downloaded' => count($images),
+            'replaced' => $replace,
+            'appended' => $append,
+            'skipped' => false,
+            'query' => $query,
+        ];
+    }
+
+    private function sourceAlreadyExists(Tour $tour, array $candidate): bool
+    {
+        $pageUrl = 'https://commons.wikimedia.org/wiki/'.rawurlencode(str_replace(' ', '_', $candidate['title']));
+
+        return collect($tour->image_sources ?? [])->contains(
+            fn (array $source) => ($source['page_url'] ?? null) === $pageUrl
+        );
     }
 
     private function searchQuery(Tour $tour): string

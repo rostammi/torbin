@@ -47,14 +47,24 @@ class PriceSource extends Model
 
     public function scopeFunded(Builder $query): Builder
     {
-        return $query->whereHas('agency', fn (Builder $agency) => $agency->where('balance', '>', 0));
+        return $query->whereHas('agency', fn (Builder $agency) => $agency
+            ->where('balance', '>', 0)
+            ->where(fn (Builder $credit) => $credit
+                ->where('cost_per_click', 0)
+                ->orWhereColumn('balance', '>=', 'cost_per_click')));
     }
 
     protected static function booted(): void
     {
         static::saving(function (PriceSource $source) {
             if ($source->provider_name && ($source->isDirty('provider_name') || ! $source->agency_id)) {
-                $source->agency_id = Agency::firstOrCreate(['name' => $source->provider_name])->id;
+                $source->agency_id = Agency::firstOrCreate(
+                    ['name' => $source->provider_name],
+                    [
+                        'balance' => Agency::DEFAULT_BALANCE,
+                        'cost_per_click' => Agency::DEFAULT_COST_PER_CLICK,
+                    ],
+                )->id;
             }
         });
     }

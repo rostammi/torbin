@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Tour;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminToursTest extends TestCase
@@ -48,6 +50,60 @@ class AdminToursTest extends TestCase
         $this->assertSame(['کیش'], $tour->priceSources()->pluck('selector')->unique()->values()->all());
     }
 
+    public function test_admin_can_upload_manual_images_as_first_images_and_reorder_the_complete_gallery(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('tours/old-cover.jpg', 'old cover');
+        Storage::disk('public')->put('tours/old-gallery.jpg', 'old gallery');
+        $tour = Tour::create([
+            'title' => 'تور تصویری',
+            'slug' => 'manual-image-order',
+            'description' => 'توضیحات',
+            'cover_image' => 'tours/old-cover.jpg',
+            'gallery' => ['tours/old-gallery.jpg'],
+            'is_active' => true,
+        ]);
+        $admin = User::factory()->create();
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+
+        $this->actingAs($admin)
+            ->post(route('admin.tours.upload-images', $tour), [
+                'images' => [
+                    UploadedFile::fake()->createWithContent('manual-first.png', $png),
+                    UploadedFile::fake()->createWithContent('manual-second.png', $png),
+                ],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $tour->refresh();
+        $firstManual = $tour->cover_image;
+        $secondManual = $tour->gallery[0];
+        $this->assertStringStartsWith('tours/manual/'.$tour->id.'/', $firstManual);
+        $this->assertSame([$secondManual, 'tours/old-cover.jpg', 'tours/old-gallery.jpg'], $tour->gallery);
+        $this->assertSame(['آپلود دستی', 'آپلود دستی'], collect($tour->image_sources)->pluck('artist')->all());
+        Storage::disk('public')->assertExists($firstManual);
+        Storage::disk('public')->assertExists($secondManual);
+
+        $newOrder = ['tours/old-gallery.jpg', $firstManual, $secondManual, 'tours/old-cover.jpg'];
+        $this->actingAs($admin)
+            ->put(route('admin.tours.reorder-images', $tour), ['images' => $newOrder])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $tour->refresh();
+        $this->assertSame($newOrder[0], $tour->cover_image);
+        $this->assertSame(array_slice($newOrder, 1), $tour->gallery);
+
+        $this->actingAs($admin)
+            ->get(route('admin.tours.edit', $tour))
+            ->assertOk()
+            ->assertSee('تصاویر و ترتیب نمایش')
+            ->assertSee('افزودن ۳ عکس خودکار')
+            ->assertSee('آپلود و قراردادن در ابتدا')
+            ->assertSee(Storage::url($newOrder[0]));
+    }
+
     public function test_tour_index_uses_compact_persian_pagination(): void
     {
         foreach (range(1, 16) as $number) {
@@ -65,7 +121,7 @@ class AdminToursTest extends TestCase
             ->assertSee('نمایش 1 تا 15 از 16 نتیجه')
             ->assertSee('قبلی')
             ->assertSee('بعدی')
-            ->assertSee('تعویض عکس‌ها')
+            ->assertSee('افزودن ۳ عکس')
             ->assertDontSee('pagination.previous')
             ->assertDontSee('pagination.next');
 

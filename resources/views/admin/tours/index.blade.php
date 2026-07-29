@@ -15,12 +15,13 @@
                 @forelse ($tours as $tour)
                     <tr>
                         <td><strong>{{ $tour->title }}</strong><small>/{{ $tour->slug }}</small></td>
-                        <td>{{ $tour->price_sources_count }} سایت</td>
+                        <td>{{ $tour->price_sources_count }} سایت<small>{{ $tour->priced_sources_count }} قیمت معتبر</small></td>
                         <td><span class="status {{ $tour->is_active ? 'success' : '' }}">{{ $tour->is_active ? 'منتشرشده' : 'پیش‌نویس' }}</span></td>
                         <td class="actions">
                             <a href="{{ route('tours.show', $tour) }}" target="_blank">نمایش</a>
                             <a href="{{ route('admin.tours.edit', $tour) }}">ویرایش</a>
-                            <form method="post" action="{{ route('admin.tours.refresh-images', $tour) }}" onsubmit="if (!confirm('عکس‌های فعلی این تور با تصاویر جدید جایگزین شوند؟')) return false; this.querySelector('button').disabled=true; this.querySelector('button').textContent='در صف…'">@csrf<button>تعویض عکس‌ها</button></form>
+                            <form method="post" action="{{ route('admin.tours.crawl', $tour) }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='در حال بررسی…'">@csrf<button>به‌روزرسانی قیمت</button></form>
+                            <form method="post" action="{{ route('admin.tours.add-images', $tour) }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='در صف…'">@csrf<button>افزودن ۳ عکس</button></form>
                             <form method="post" action="{{ route('admin.tours.destroy', $tour) }}" onsubmit="return confirm('این تور حذف شود؟')">@csrf @method('DELETE')<button class="danger-link">حذف</button></form>
                         </td>
                     </tr>

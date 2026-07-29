@@ -185,6 +185,67 @@ class TourImageCrawlerTest extends TestCase
         Storage::disk('public')->assertMissing('tours/old-gallery.png');
     }
 
+    public function test_admin_can_append_three_crawled_images_without_replacing_existing_images(): void
+    {
+        Storage::fake('public');
+        config()->set('crawler.images.min_width', 1);
+        config()->set('crawler.images.min_height', 1);
+        config()->set('crawler.images.min_aspect_ratio', 1);
+
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+        $searchResponse = [
+            'query' => ['pages' => [
+                $this->commonsImage('File:Kish one.jpg', 'https://upload.wikimedia.org/kish-one.png', 'عکاس اول'),
+                $this->commonsImage('File:Kish two.jpg', 'https://upload.wikimedia.org/kish-two.png', 'عکاس دوم'),
+                $this->commonsImage('File:Kish three.jpg', 'https://upload.wikimedia.org/kish-three.png', 'عکاس سوم'),
+                $this->commonsImage('File:Kish four.jpg', 'https://upload.wikimedia.org/kish-four.png', 'عکاس چهارم'),
+            ]],
+        ];
+        Http::fake([
+            'commons.wikimedia.org/*' => fn () => Http::response($searchResponse),
+            'upload.wikimedia.org/*' => fn () => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        Storage::disk('public')->put('tours/existing-cover.png', $png);
+        Storage::disk('public')->put('tours/existing-gallery.png', $png);
+        $tour = Tour::create([
+            'title' => 'تور کیش',
+            'slug' => 'kish-append-images',
+            'description' => 'توضیحات',
+            'cover_image' => 'tours/existing-cover.png',
+            'gallery' => ['tours/existing-gallery.png'],
+            'is_active' => true,
+        ]);
+        TourSuggestion::create([
+            'keyword' => 'تور کیش',
+            'suggested_title' => 'تور کیش',
+            'destination' => 'کیش',
+            'trend_score' => 90,
+            'source' => 'destination_catalog',
+            'status' => 'created',
+            'tour_id' => $tour->id,
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('admin.tours.add-images', $tour))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $tour->refresh();
+        $run = SyncRun::where('type', 'add_tour_images')->sole();
+        $this->assertSame('success', $run->status);
+        $this->assertSame(3, $run->details['downloaded']);
+        $this->assertSame('tours/existing-cover.png', $tour->cover_image);
+        $this->assertCount(4, $tour->gallery);
+        $this->assertSame('tours/existing-gallery.png', $tour->gallery[0]);
+        $this->assertCount(3, $tour->image_sources);
+        Storage::disk('public')->assertExists('tours/existing-cover.png');
+        Storage::disk('public')->assertExists('tours/existing-gallery.png');
+        foreach (array_slice($tour->gallery, 1) as $path) {
+            Storage::disk('public')->assertExists($path);
+        }
+    }
+
     private function commonsImage(string $title, string $url, string $artist): array
     {
         return [

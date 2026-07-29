@@ -56,6 +56,7 @@ class AgencyBillingTest extends TestCase
     {
         [, $source] = $this->pricedSource();
         $agency = $source->agency;
+        $agency->update(['balance' => 0]);
         $admin = User::factory()->create();
 
         $this->actingAs($admin)->put(route('admin.agencies.update', $agency), [
@@ -86,7 +87,7 @@ class AgencyBillingTest extends TestCase
     public function test_public_page_uses_internal_tracking_link(): void
     {
         [$tour, $source] = $this->pricedSource();
-        $source->agency->update(['balance' => 1]);
+        $source->agency->update(['balance' => 1_000]);
 
         $this->get(route('tours.show', $tour))
             ->assertOk()
@@ -97,11 +98,31 @@ class AgencyBillingTest extends TestCase
     public function test_agency_with_zero_credit_is_hidden_from_comparison(): void
     {
         [$tour, $source] = $this->pricedSource();
+        $source->agency->update(['balance' => 0, 'cost_per_click' => 2_000]);
 
         $this->get(route('tours.show', $tour))
             ->assertOk()
             ->assertDontSee($source->provider_name)
             ->assertSee('هنوز قیمت معتبری برای این تور ثبت نشده است');
+    }
+
+    public function test_free_source_with_zero_credit_is_also_hidden_from_comparison(): void
+    {
+        [$tour, $source] = $this->pricedSource();
+        $source->agency->update(['balance' => 0, 'cost_per_click' => 0]);
+
+        $this->get(route('tours.show', $tour))
+            ->assertOk()
+            ->assertDontSee($source->provider_name)
+            ->assertSee('هنوز قیمت معتبری برای این تور ثبت نشده است');
+    }
+
+    public function test_new_agency_gets_default_credit_and_click_cost(): void
+    {
+        [, $source] = $this->pricedSource();
+
+        $this->assertSame(1_000_000, $source->agency->balance);
+        $this->assertSame(1_000, $source->agency->cost_per_click);
     }
 
     private function pricedSource(): array

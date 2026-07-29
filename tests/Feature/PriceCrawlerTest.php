@@ -3,9 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\PriceSource;
+use App\Models\SyncRun;
 use App\Models\Tour;
+use App\Models\User;
 use App\Services\PriceCrawler;
+use App\Services\TourPriceUpdater;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -56,5 +60,84 @@ class PriceCrawlerTest extends TestCase
         $this->assertTrue(app(PriceCrawler::class)->crawlContent($source, true));
         $this->assertSame('manual', $source->fresh()->last_status);
         $this->assertSame('بهترین زمان سفر به شیراز', $tour->fresh()->auto_content['topics'][0]['title']);
+    }
+
+    public function test_single_tour_price_update_checks_ten_primary_sites_then_fallback_until_three_prices(): void
+    {
+        $tour = $this->fakeTenPrimaryAndOneFallback();
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('admin.tours.crawl', $tour))
+            ->assertRedirect()
+            ->assertSessionHas('success', fn (string $message) => str_contains($message, '10 سایت اصلی')
+                && str_contains($message, '8 منبع خطادار حذف شد'));
+
+        $tour->refresh();
+        $this->assertSame(3, $tour->priceSources()->count());
+        $this->assertSame(0, $tour->priceSources()->where('last_status', 'failed')->count());
+        $this->assertSame(3, $tour->priceSources()->where('latest_price', '>', 0)->count());
+        $this->assertSame(8_450_000, $tour->priceSources()->where('provider_name', 'سفر۲۴ تست')->value('latest_price'));
+    }
+
+    public function test_group_price_update_uses_the_same_ten_site_and_fallback_policy_per_tour(): void
+    {
+        $this->fakeTenPrimaryAndOneFallback();
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('admin.sync.run'), ['type' => 'prices'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $run = SyncRun::where('type', 'prices')->sole();
+        $this->assertSame(1, $run->details['prices']['tours']);
+        $this->assertSame(11, $run->details['prices']['checked']);
+        $this->assertSame(1, $run->details['prices']['fallback_checked']);
+        $this->assertSame(8, $run->details['prices']['failed_sources_removed']);
+        $this->assertSame(1, $run->details['prices']['with_minimum_prices']);
+        $this->assertSame([], $run->details['prices']['needs_new_crawler']);
+    }
+
+    private function fakeTenPrimaryAndOneFallback(): Tour
+    {
+        config()->set('crawler.providers', collect(range(1, TourPriceUpdater::PRIMARY_PROVIDER_COUNT))
+            ->map(fn (int $number) => [
+                'name' => "سایت اصلی {$number}",
+                'type' => 'structured',
+                'url' => "https://93.184.216.34/primary/{$number}",
+            ])->all());
+        config()->set('crawler.fallback_providers', [[
+            'name' => 'سفر۲۴ تست',
+            'type' => 'safar24',
+            'url' => 'https://93.184.216.34/fallback',
+        ]]);
+        Http::fake(function (Request $request) {
+            if (preg_match('~/primary/1(?:\?|$)~', $request->url())) {
+                return Http::response($this->structuredOffer(10_000_000));
+            }
+            if (preg_match('~/primary/2(?:\?|$)~', $request->url())) {
+                return Http::response($this->structuredOffer(11_000_000));
+            }
+            if (str_contains($request->url(), '/fallback')) {
+                return Http::response('<a href="/tour/kish">تور کیش ۸,۴۵۰,۰۰۰ تومان</a>');
+            }
+
+            return Http::response('<html><body>در حال حاضر بدون قیمت</body></html>');
+        });
+
+        return Tour::create([
+            'title' => 'تور کیش',
+            'slug' => 'kish-price-policy-'.str()->random(8),
+            'description' => 'توضیحات',
+            'is_active' => true,
+        ]);
+    }
+
+    private function structuredOffer(int $price): string
+    {
+        return <<<HTML
+            <html><head><script type="application/ld+json">
+            {"@type":"Product","offers":{"@type":"Offer","price":"{$price}","url":"https://93.184.216.34/buy"}}
+            </script></head><body></body></html>
+            HTML;
     }
 }

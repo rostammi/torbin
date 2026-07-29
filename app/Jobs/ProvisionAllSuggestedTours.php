@@ -41,7 +41,11 @@ class ProvisionAllSuggestedTours implements ShouldQueue
             'updated' => 0,
             'sources' => 0,
             'prices_crawled' => 0,
+            'prices_found' => 0,
+            'fallback_checked' => 0,
+            'failed_sources_removed' => 0,
             'contents_crawled' => 0,
+            'images_downloaded' => 0,
             'failures' => [],
         ];
 
@@ -52,7 +56,11 @@ class ProvisionAllSuggestedTours implements ShouldQueue
                     $summary[$result['created'] ? 'created' : 'updated']++;
                     $summary['sources'] += $result['sources'];
                     $summary['prices_crawled'] += $result['crawled'];
+                    $summary['prices_found'] += $result['prices_found'];
+                    $summary['fallback_checked'] += $result['fallback_checked'];
+                    $summary['failed_sources_removed'] += $result['failed_sources_removed'];
                     $summary['contents_crawled'] += $result['content_crawled'];
+                    $summary['images_downloaded'] += $result['images_downloaded'];
                     $run->increment('successful');
                 } catch (Throwable $exception) {
                     $suggestion->update(['status' => 'failed']);

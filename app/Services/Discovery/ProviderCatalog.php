@@ -11,19 +11,24 @@ class ProviderCatalog
         $providers = collect(config('crawler.providers', []))->take(max(4, min($limit, count(config('crawler.providers', [])))));
 
         foreach ($providers as $provider) {
-            $url = $provider['url'];
-
-            $tour->priceSources()->updateOrCreate(['provider_name' => $provider['name']], [
-                'source_url' => $url,
-                'buy_url' => $url,
-                'extraction_type' => $provider['type'],
-                'selector' => $destination,
-                'price_multiplier' => 1,
-                'currency' => 'تومان',
-                'is_active' => true,
-            ]);
+            $this->attachProvider($tour, $destination, $provider);
         }
 
         return $providers->count();
+    }
+
+    public function attachProvider(Tour $tour, string $destination, array $provider)
+    {
+        $url = $provider['url'];
+
+        return $tour->priceSources()->updateOrCreate(['provider_name' => $provider['name']], [
+            'source_url' => $url,
+            'buy_url' => $url,
+            'extraction_type' => $provider['type'],
+            'selector' => $destination,
+            'price_multiplier' => 1,
+            'currency' => 'تومان',
+            'is_active' => true,
+        ]);
     }
 }

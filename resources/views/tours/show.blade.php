@@ -37,7 +37,11 @@
                     <ul>
                         @foreach ($tour->image_sources as $source)
                             <li>
-                                <a href="{{ data_get($source, 'page_url') }}" target="_blank" rel="noopener noreferrer">{{ data_get($source, 'artist', 'Wikimedia Commons') }}</a>
+                                @if(data_get($source, 'page_url'))
+                                    <a href="{{ data_get($source, 'page_url') }}" target="_blank" rel="noopener noreferrer">{{ data_get($source, 'artist', 'Wikimedia Commons') }}</a>
+                                @else
+                                    <span>{{ data_get($source, 'artist', 'آپلود دستی') }}</span>
+                                @endif
                                 <span>—</span>
                                 @if (data_get($source, 'license_url'))
                                     <a href="{{ data_get($source, 'license_url') }}" target="_blank" rel="license noopener noreferrer">{{ data_get($source, 'license', 'مجوز آزاد') }}</a>

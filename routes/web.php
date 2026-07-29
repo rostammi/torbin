@@ -51,6 +51,9 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
         Route::post('agencies/{agency}/access', [AgencyController::class, 'saveAccess'])->name('agencies.access');
         Route::post('tours/{tour}/crawl', [AdminTourController::class, 'crawl'])->name('tours.crawl');
         Route::post('tours/{tour}/crawl-content', [AdminTourController::class, 'crawlContent'])->name('tours.crawl-content');
+        Route::post('tours/{tour}/add-images', [AdminTourController::class, 'addImages'])->name('tours.add-images');
+        Route::post('tours/{tour}/upload-images', [AdminTourController::class, 'uploadImages'])->name('tours.upload-images');
+        Route::put('tours/{tour}/reorder-images', [AdminTourController::class, 'reorderImages'])->name('tours.reorder-images');
         Route::post('tours/{tour}/refresh-images', [AdminTourController::class, 'refreshImages'])->name('tours.refresh-images');
         Route::post('tours/{tour}/official-sources', [PriceSourceController::class, 'official'])->name('sources.official');
         Route::post('tours/{tour}/sources', [PriceSourceController::class, 'store'])->name('sources.store');

@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\AddTourImages;
 use App\Jobs\RefreshTourImages;
 use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Services\Alerts\PriceAlertNotifier;
+use App\Services\Images\TourImageManager;
 use App\Services\PriceCrawler;
+use App\Services\TourPriceUpdater;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +23,12 @@ class TourController extends Controller
 {
     public function index(): View
     {
-        $tours = Tour::withCount('priceSources')->latest()->paginate(15);
+        $tours = Tour::withCount([
+            'priceSources',
+            'priceSources as priced_sources_count' => fn ($query) => $query
+                ->where('is_active', true)
+                ->where('latest_price', '>', 0),
+        ])->latest()->paginate(15);
 
         return view('admin.tours.index', compact('tours'));
     }
@@ -62,13 +70,24 @@ class TourController extends Controller
         return redirect()->route('admin.tours.index')->with('success', 'تور حذف شد.');
     }
 
-    public function crawl(Tour $tour, PriceCrawler $crawler, PriceAlertNotifier $alerts): RedirectResponse
+    public function crawl(Tour $tour, TourPriceUpdater $updater, PriceAlertNotifier $alerts): RedirectResponse
     {
-        $sources = $tour->priceSources()->where('is_active', true)->where('extraction_type', '!=', 'manual')->get();
-        $success = $sources->filter(fn ($source) => $crawler->crawl($source))->count();
+        $result = $updater->update($tour);
         $notified = $alerts->notifyForTour($tour);
+        $fallback = $result['fallback_checked'] > 0
+            ? " و {$result['fallback_checked']} سایت جایگزین"
+            : '';
+        $target = $result['target_met']
+            ? "{$result['prices_found']} قیمت معتبر پیدا شد"
+            : "فقط {$result['prices_found']} قیمت پیدا شد و افزودن کراولر جدید لازم است";
+        $removed = $result['failed_sources_removed'] > 0
+            ? "؛ {$result['failed_sources_removed']} منبع خطادار حذف شد"
+            : '';
 
-        return back()->with('success', "بررسی قیمت‌ها تمام شد: {$success} منبع از {$sources->count()} منبع موفق و {$notified} هشدار ارسال شد.");
+        return back()->with(
+            $result['target_met'] ? 'success' : 'error',
+            "قیمت این تور از {$result['primary_checked']} سایت اصلی{$fallback} بررسی شد؛ {$target}{$removed} و {$notified} هشدار ارسال شد."
+        );
     }
 
     public function crawlContent(Tour $tour, PriceCrawler $crawler): RedirectResponse
@@ -115,6 +134,68 @@ class TourController extends Controller
 
             return back()->with('error', 'شروع تعویض تصاویر ناموفق بود: '.$exception->getMessage());
         }
+    }
+
+    public function addImages(Tour $tour): RedirectResponse
+    {
+        $running = SyncRun::query()
+            ->whereIn('type', ['add_tour_images', 'refresh_tour_images'])
+            ->where('status', 'running')
+            ->whereNull('finished_at')
+            ->where('details->tour_id', $tour->id)
+            ->exists();
+
+        if ($running) {
+            return back()->with('error', 'عملیات تصاویر این تور از قبل در صف یا در حال اجراست.');
+        }
+
+        $run = SyncRun::create([
+            'user_id' => auth()->id(),
+            'type' => 'add_tour_images',
+            'total' => 1,
+            'details' => ['tour_id' => $tour->id],
+            'started_at' => now(),
+        ]);
+
+        try {
+            AddTourImages::dispatch($tour->id, $run->id);
+
+            return back()->with('success', "افزودن ۳ تصویر جدید به {$tour->title} در صف قرار گرفت؛ تصاویر فعلی حفظ می‌شوند.");
+        } catch (Throwable $exception) {
+            $run->update([
+                'status' => 'failed',
+                'failed' => 1,
+                'error' => mb_substr($exception->getMessage(), 0, 1000),
+                'finished_at' => now(),
+            ]);
+            report($exception);
+
+            return back()->with('error', 'شروع افزودن تصاویر ناموفق بود: '.$exception->getMessage());
+        }
+    }
+
+    public function uploadImages(Request $request, Tour $tour, TourImageManager $images): RedirectResponse
+    {
+        $data = $request->validate([
+            'images' => ['required', 'array', 'min:1', 'max:12'],
+            'images.*' => ['required', 'image', 'max:8192'],
+        ]);
+
+        $uploaded = $images->prependUploads($tour, $data['images']);
+
+        return back()->with('success', count($uploaded).' تصویر دستی اضافه شد؛ نخستین تصویر آپلودشده عکس اول تور است.');
+    }
+
+    public function reorderImages(Request $request, Tour $tour, TourImageManager $images): RedirectResponse
+    {
+        $data = $request->validate([
+            'images' => ['required', 'array', 'min:1'],
+            'images.*' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $images->reorder($tour, $data['images']);
+
+        return back()->with('success', 'ترتیب نمایش تصاویر ذخیره شد.');
     }
 
     private function validated(Request $request, ?Tour $tour = null): array

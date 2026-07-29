@@ -7,7 +7,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Agency extends Model
 {
+    public const DEFAULT_BALANCE = 1_000_000;
+
+    public const DEFAULT_COST_PER_CLICK = 1_000;
+
     protected $fillable = ['name', 'balance', 'cost_per_click', 'currency'];
+
+    protected $attributes = [
+        'balance' => self::DEFAULT_BALANCE,
+        'cost_per_click' => self::DEFAULT_COST_PER_CLICK,
+        'currency' => 'تومان',
+    ];
 
     protected function casts(): array
     {
@@ -36,6 +46,7 @@ class Agency extends Model
 
     public function canAffordClick(): bool
     {
-        return $this->cost_per_click === 0 || $this->balance >= $this->cost_per_click;
+        return $this->balance > 0
+            && ($this->cost_per_click === 0 || $this->balance >= $this->cost_per_click);
     }
 }

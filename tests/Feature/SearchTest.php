@@ -99,7 +99,10 @@ class SearchTest extends TestCase
             'currency' => 'تومان',
             'is_active' => true,
         ]);
-        $source->agency->update(['balance' => $balance]);
+        $source->agency->update([
+            'balance' => $balance,
+            'cost_per_click' => $balance === 0 ? 1_000 : 0,
+        ]);
 
         return $tour;
     }

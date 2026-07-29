@@ -134,4 +134,10 @@ return [
         ['name' => 'جیمبو', 'type' => 'marketplace_html', 'url' => 'https://www.jimbo.ir/tours/'],
         ['name' => 'امین', 'type' => 'marketplace_html', 'url' => 'https://amenin.co/'],
     ],
+    'fallback_providers' => [
+        ['name' => 'سفر۲۴', 'type' => 'safar24', 'url' => 'https://safar24.net/'],
+        ['name' => 'سفرخان', 'type' => 'marketplace_html', 'url' => 'https://www.safarkhan.ir/tours/'],
+        ['name' => 'بابیا', 'type' => 'marketplace_html', 'url' => 'https://babia.ir/tours/'],
+        ['name' => 'ایلیا گشت', 'type' => 'marketplace_html', 'url' => 'https://www.ealiya.com/travel/tour/'],
+    ],
 ];
