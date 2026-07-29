@@ -2,14 +2,23 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\RecoverPriceSourceLink;
 use App\Models\Tour;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AgencyBillingTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Http::fake(['https://agency.example/*' => Http::response('', 200)]);
+    }
 
     public function test_buy_click_is_counted_charged_and_redirected(): void
     {
@@ -50,6 +59,34 @@ class AgencyBillingTest extends TestCase
             'charged_amount' => 0,
             'status' => 'insufficient_credit',
         ]);
+    }
+
+    public function test_broken_destination_is_hidden_recovery_is_queued_and_user_returns_to_tour_without_charge(): void
+    {
+        Queue::fake();
+        [$tour, $source] = $this->pricedSource();
+        $source->update([
+            'source_url' => 'https://93.184.216.34/tours',
+            'buy_url' => 'https://93.184.216.34/dead-offer',
+        ]);
+        $source->agency->update(['balance' => 10_000, 'cost_per_click' => 2_000]);
+        Http::fake(['https://93.184.216.34/*' => Http::response('', 404)]);
+
+        $this->get(route('outbound.click', $source))
+            ->assertRedirect($tour->publicUrl())
+            ->assertSessionHas('error', fn (string $message) => str_contains($message, 'یکی از لینک‌های دیگر'));
+
+        $source->refresh();
+        $this->assertFalse($source->is_active);
+        $this->assertSame('broken_link', $source->last_status);
+        $this->assertSame(['https://93.184.216.34/dead-offer'], $source->rejected_urls);
+        $this->assertSame(10_000, $source->agency->fresh()->balance);
+        $this->assertDatabaseCount('outbound_clicks', 0);
+        Queue::assertPushed(RecoverPriceSourceLink::class, fn ($job) => $job->sourceId === $source->id);
+
+        $this->get($tour->publicUrl())
+            ->assertOk()
+            ->assertDontSee($source->provider_name);
     }
 
     public function test_admin_can_set_click_cost_and_adjust_credit_with_a_ledger(): void

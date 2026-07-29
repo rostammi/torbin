@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdvertisementController;
 use App\Http\Controllers\Admin\AgencyController;
+use App\Http\Controllers\Admin\ComparisonSourceController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PriceSourceController;
 use App\Http\Controllers\Admin\SyncController;
@@ -51,6 +52,8 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
         Route::resource('tours', AdminTourController::class)->except('show');
         Route::resource('advertisements', AdvertisementController::class)->except('show');
         Route::resource('static-pages', AdminStaticPageController::class)->only(['index', 'edit', 'update']);
+        Route::post('comparison-sources/{comparison_source}/scan', [ComparisonSourceController::class, 'scan'])->name('comparison-sources.scan');
+        Route::resource('comparison-sources', ComparisonSourceController::class)->except('show');
         Route::get('suggestions', [TourSuggestionController::class, 'index'])->name('suggestions.index');
         Route::post('suggestions/discover', [TourSuggestionController::class, 'discover'])->name('suggestions.discover');
         Route::post('suggestions/build-all', [TourSuggestionController::class, 'storeAll'])->name('suggestions.store-all');

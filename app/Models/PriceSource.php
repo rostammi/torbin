@@ -16,7 +16,7 @@ class PriceSource extends Model
         'tour_id', 'agency_id', 'provider_name', 'source_url', 'buy_url', 'extraction_type', 'selector',
         'price_multiplier', 'latest_price', 'currency', 'is_active', 'last_checked_at',
         'last_status', 'last_error', 'latest_rating', 'latest_rating_count', 'rating_type',
-        'latest_details', 'is_featured', 'content_insights', 'content_checked_at', 'content_error',
+        'latest_details', 'rejected_urls', 'is_featured', 'content_insights', 'content_checked_at', 'content_error',
     ];
 
     protected function casts(): array
@@ -27,6 +27,7 @@ class PriceSource extends Model
             'latest_rating' => 'float',
             'latest_rating_count' => 'integer',
             'latest_details' => 'array',
+            'rejected_urls' => 'array',
             'content_insights' => 'array',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',

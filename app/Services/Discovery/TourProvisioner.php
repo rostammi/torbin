@@ -45,6 +45,15 @@ class TourProvisioner
 
             $tour->update(['category' => $suggestion->category ?: 'tour']);
             $this->providers->attach($tour, (string) $destination);
+            foreach (data_get($suggestion->metadata, 'discovery_sources', []) as $source) {
+                if (filled($source['name'] ?? null) && filled($source['item_url'] ?? null)) {
+                    $this->providers->attachProvider($tour, (string) $destination, [
+                        'name' => $source['name'],
+                        'type' => 'marketplace_html',
+                        'url' => $source['item_url'],
+                    ]);
+                }
+            }
             $tour->update(['seo_keywords' => data_get($suggestion->metadata, 'keywords', [$suggestion->keyword])]);
             $suggestion->update(['status' => 'processing', 'tour_id' => $tour->id]);
 

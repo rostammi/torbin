@@ -23,11 +23,14 @@ class MarketplaceHtmlCrawler
         [$offers, $links] = $this->inspect($body, $source->source_url, $keyword, $source);
         $pagesChecked = 1;
 
+        $offers = $this->withoutRejectedUrls($offers, $source);
+        $links = $this->withoutRejectedLinks($links, $source);
+
         if ($offers === []) {
             foreach (array_slice($links, 0, self::MAX_DESTINATION_PAGES) as $url) {
                 $this->assertPublicUrl($url);
                 [$pageOffers] = $this->inspect($this->fetch($url), $url, $keyword, $source);
-                $offers = array_merge($offers, $pageOffers);
+                $offers = array_merge($offers, $this->withoutRejectedUrls($pageOffers, $source));
                 $pagesChecked++;
             }
         }
@@ -40,12 +43,16 @@ class MarketplaceHtmlCrawler
         }
 
         $cheapest = collect($offers)->sortBy('price')->first();
+        $stableDestinationUrl = $this->stableDestinationUrl($links, $source)
+            ?: $this->probeStableDestinationUrl($source);
 
         return new CrawlResult(
             $cheapest['price'],
-            $cheapest['url'],
+            $stableDestinationUrl ?: $cheapest['url'],
             details: array_filter([
                 'offer_title' => $cheapest['title'] ?: $source->tour->title,
+                'offer_url' => $cheapest['url'],
+                'stable_destination_url' => $stableDestinationUrl,
                 'destination' => $keyword,
                 'pages_checked' => $pagesChecked,
             ]),
@@ -210,6 +217,92 @@ class MarketplaceHtmlCrawler
             ->unique(fn (array $offer) => $offer['price'].'|'.$offer['url'])
             ->values()
             ->all();
+    }
+
+    private function withoutRejectedUrls(array $offers, PriceSource $source): array
+    {
+        $rejected = $source->rejected_urls ?? [];
+
+        return collect($offers)
+            ->reject(fn (array $offer) => in_array($offer['url'] ?? null, $rejected, true))
+            ->values()
+            ->all();
+    }
+
+    private function withoutRejectedLinks(array $links, PriceSource $source): array
+    {
+        $rejected = $source->rejected_urls ?? [];
+
+        return collect($links)
+            ->reject(fn (string $url) => in_array($url, $rejected, true))
+            ->values()
+            ->all();
+    }
+
+    private function stableDestinationUrl(array $links, PriceSource $source): ?string
+    {
+        $keyword = $this->destinationKeyword($source);
+
+        return collect($links)
+            ->filter(function (string $url) use ($keyword) {
+                $path = rawurldecode((string) parse_url($url, PHP_URL_PATH));
+                $query = (string) parse_url($url, PHP_URL_QUERY);
+
+                return $query === ''
+                    && ! preg_match('~/(?:tourinfo|package|offer|booking|checkout)(?:/|$)~iu', $path)
+                    && str_contains($this->normalize($path), $keyword);
+            })
+            ->sortBy(fn (string $url) => mb_strlen((string) parse_url($url, PHP_URL_PATH)))
+            ->first();
+    }
+
+    private function probeStableDestinationUrl(PriceSource $source): ?string
+    {
+        $parts = parse_url($source->source_url);
+        if (! isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+        $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+        $keyword = $this->destinationKeyword($source);
+        $slug = str_replace(' ', '-', $keyword);
+        $candidates = [
+            $origin.'/'.rawurlencode('تور-'.$slug),
+            $origin.'/tour-'.rawurlencode($slug),
+            $origin.'/tours/'.rawurlencode($slug),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (in_array($candidate, $source->rejected_urls ?? [], true)) {
+                continue;
+            }
+            try {
+                $this->assertPublicUrl($candidate);
+                if ($this->pageHeadingContains($this->fetch($candidate), $keyword)) {
+                    return $candidate;
+                }
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        return null;
+    }
+
+    private function pageHeadingContains(string $html, string $keyword): bool
+    {
+        $document = new DOMDocument;
+        $previous = libxml_use_internal_errors(true);
+        $document->loadHTML('<?xml encoding="utf-8" ?>'.$html, LIBXML_NOERROR | LIBXML_NOWARNING);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        foreach ((new DOMXPath($document))->query('//h1|//title') ?: [] as $node) {
+            if (str_contains($this->normalize($node->textContent), $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function pageTargetsDestination(DOMXPath $xpath, string $keyword): bool

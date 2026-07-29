@@ -29,6 +29,7 @@
                     @if(auth()->user()->isAdmin())
                         <a href="{{ route('admin.tours.index') }}">صفحات مقایسه</a>
                         <a href="{{ route('admin.suggestions.index') }}">پیشنهادها</a>
+                        <a href="{{ route('admin.comparison-sources.index') }}">مدیریت منابع</a>
                         <a href="{{ route('admin.sync.index') }}">همگام‌سازی</a>
                         <a href="{{ route('admin.agencies.index') }}">آژانس‌ها و اعتبار</a>
                         <a href="{{ route('admin.advertisements.index') }}">تبلیغات</a>

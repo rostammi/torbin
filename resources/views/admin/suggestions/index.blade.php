@@ -58,7 +58,7 @@
                             @endif
                         </td>
                         <td><span class="trend-score"><i style="width: {{ $suggestion->trend_score }}%"></i></span><small>{{ $suggestion->trend_score }} از ۱۰۰</small></td>
-                        <td>{{ config("comparison.categories.{$suggestion->category}.plural") }}<small>{{ $suggestion->category === 'tour' ? (data_get($suggestion->metadata, 'region') === 'domestic' ? 'داخلی' : 'خارجی') : 'کاتالوگ مقایسه' }}</small></td>
+                        <td>{{ config("comparison.categories.{$suggestion->category}.plural") }}<small>{{ $suggestion->source === 'managed_source' ? 'منبع مدیریت‌شده' : ($suggestion->category === 'tour' ? (data_get($suggestion->metadata, 'region') === 'domestic' ? 'داخلی' : 'خارجی') : 'کاتالوگ مقایسه') }}</small></td>
                         <td><span class="status {{ $suggestion->status === 'created' ? 'success' : ($suggestion->status === 'failed' ? 'failed' : '') }}">{{ match($suggestion->status) {'created' => 'ساخته‌شده', 'processing' => 'در حال پردازش', 'failed' => 'ناموفق', default => 'آماده ساخت'} }}</span></td>
                         <td class="actions">
                             @if ($suggestion->tour)
