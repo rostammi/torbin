@@ -8,6 +8,7 @@ use App\Models\Tour;
 use App\Models\User;
 use App\Services\PriceCrawler;
 use App\Services\TourPriceUpdater;
+use App\Services\Crawlers\SourceUrlResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -60,6 +61,47 @@ class PriceCrawlerTest extends TestCase
         $this->assertTrue(app(PriceCrawler::class)->crawlContent($source, true));
         $this->assertSame('manual', $source->fresh()->last_status);
         $this->assertSame('بهترین زمان سفر به شیراز', $tour->fresh()->auto_content['topics'][0]['title']);
+    }
+
+    public function test_failed_source_finds_a_destination_url_on_the_same_site_and_retries_before_deletion(): void
+    {
+        Http::fake(function (Request $request) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+
+            return match ($path) {
+                '/wrong-tour-url' => Http::response('not found', 404),
+                '/tours/kish' => Http::response(
+                    '<html><head><title>تور کیش</title></head><body><div class="price">۹,۷۵۰,۰۰۰ تومان</div></body></html>'
+                ),
+                default => Http::response('<a href="/tours/kish">مشاهده و خرید تور کیش</a>'),
+            };
+        });
+        $tour = Tour::create([
+            'title' => 'تور کیش',
+            'slug' => 'kish-resolved-source',
+            'description' => 'توضیحات',
+            'is_active' => true,
+        ]);
+        $source = $tour->priceSources()->create([
+            'provider_name' => 'سایت با آدرس قدیمی',
+            'source_url' => 'https://93.184.216.34/wrong-tour-url',
+            'buy_url' => 'https://93.184.216.34/wrong-tour-url',
+            'extraction_type' => 'marketplace_html',
+            'selector' => 'کیش',
+            'currency' => 'تومان',
+            'is_active' => true,
+        ]);
+
+        $this->assertSame(
+            ['https://93.184.216.34/tours/kish'],
+            app(SourceUrlResolver::class)->candidates($source),
+        );
+        $this->assertTrue(app(PriceCrawler::class)->crawl($source));
+        $source->refresh();
+        $this->assertSame('https://93.184.216.34/tours/kish', $source->source_url);
+        $this->assertSame(9_750_000, $source->latest_price);
+        $this->assertSame('success', $source->last_status);
+        $this->assertDatabaseHas('price_sources', ['id' => $source->id]);
     }
 
     public function test_single_tour_price_update_checks_ten_primary_sites_then_fallback_until_three_prices(): void

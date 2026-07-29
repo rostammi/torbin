@@ -6,6 +6,7 @@ use App\Models\PriceHistory;
 use App\Models\Tour;
 use App\Services\Advertising\AdvertisementManager;
 use App\Services\Analytics\TourViewTracker;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -27,8 +28,17 @@ class HomeController extends Controller
         return view('home', compact('tours', 'homeSliderAds', 'homeInlineAds'));
     }
 
-    public function show(Request $request, Tour $tour, TourViewTracker $views, AdvertisementManager $advertisements): View
+    public function show(
+        Request $request,
+        Tour $tour,
+        TourViewTracker $views,
+        AdvertisementManager $advertisements,
+    ): RedirectResponse|View
     {
+        if ($tour->getAttribute('resolved_from_slug')) {
+            return redirect()->route('tours.show', $tour, 301);
+        }
+
         abort_unless($tour->is_active, 404);
         $views->track($tour, $request);
         $tour->load(['priceSources' => fn ($query) => $query

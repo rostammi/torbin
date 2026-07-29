@@ -7,8 +7,8 @@ use App\Models\TourSuggestion;
 use App\Services\Images\TourImageCrawler;
 use App\Services\PriceCrawler;
 use App\Services\TourPriceUpdater;
+use App\Services\TourSlugGenerator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Throwable;
 
 class TourProvisioner
@@ -17,6 +17,7 @@ class TourProvisioner
         private readonly ProviderCatalog $providers,
         private readonly PriceCrawler $crawler,
         private readonly TourPriceUpdater $priceUpdater,
+        private readonly TourSlugGenerator $slugGenerator,
         private readonly TourImageCrawler $imageCrawler,
     ) {}
 
@@ -25,7 +26,7 @@ class TourProvisioner
         $destination = $suggestion->destination ?: preg_replace('/^تور\s+/u', '', $suggestion->keyword);
         [$tour, $created] = DB::transaction(function () use ($suggestion, $destination) {
             $suggestion = TourSuggestion::query()->lockForUpdate()->findOrFail($suggestion->id);
-            $slug = Str::slug($suggestion->keyword) ?: 'tour-'.substr(sha1($suggestion->keyword), 0, 12);
+            $slug = $this->slugGenerator->forSuggestion($suggestion);
 
             $tour = $suggestion->tour ?: Tour::where('slug', $slug)->first();
             $created = $tour === null;

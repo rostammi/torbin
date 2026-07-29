@@ -11,6 +11,7 @@ use App\Services\Alerts\PriceAlertNotifier;
 use App\Services\Images\TourImageManager;
 use App\Services\PriceCrawler;
 use App\Services\TourPriceUpdater;
+use App\Services\TourSlugGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -54,9 +55,13 @@ class TourController extends Controller
 
     public function update(Request $request, Tour $tour): RedirectResponse
     {
+        $oldSlug = $tour->slug;
         $tour->update($this->validated($request, $tour));
+        if ($tour->slug !== $oldSlug) {
+            $tour->slugRedirects()->updateOrCreate(['old_slug' => $oldSlug]);
+        }
 
-        return back()->with('success', 'اطلاعات تور ذخیره شد.');
+        return redirect()->route('admin.tours.edit', $tour)->with('success', 'اطلاعات تور ذخیره شد.');
     }
 
     public function destroy(Tour $tour): RedirectResponse
@@ -200,9 +205,13 @@ class TourController extends Controller
 
     private function validated(Request $request, ?Tour $tour = null): array
     {
-        $request->merge([
-            'slug' => Str::slug($request->input('slug') ?: $request->input('title')) ?: Str::random(10),
-        ]);
+        $requestedSlug = trim((string) $request->input('slug'));
+        $request->merge(['slug' => $requestedSlug !== ''
+            ? Str::slug($requestedSlug)
+            : app(TourSlugGenerator::class)->unique(
+                app(TourSlugGenerator::class)->fromTitle((string) $request->input('title')),
+                $tour,
+            )]);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:150'],

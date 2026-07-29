@@ -11,6 +11,7 @@ use App\Services\Crawlers\FlytodayCrawler;
 use App\Services\Crawlers\MarketplaceHtmlCrawler;
 use App\Services\Crawlers\Safar24Crawler;
 use App\Services\Crawlers\SafarmarketCrawler;
+use App\Services\Crawlers\SourceUrlResolver;
 use App\Services\Crawlers\StructuredDataCrawler;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -25,6 +26,7 @@ class PriceCrawler
         private readonly MarketplaceHtmlCrawler $marketplaceHtml,
         private readonly Safar24Crawler $safar24,
         private readonly StructuredDataCrawler $structured,
+        private readonly SourceUrlResolver $sourceUrlResolver,
         private readonly WebsiteContentExtractor $contentExtractor,
         private readonly TourContentCompiler $contentCompiler,
     ) {}
@@ -36,37 +38,18 @@ class PriceCrawler
                 throw new RuntimeException('این منبع دستی است و نیازی به کراول ندارد.');
             }
 
-            $result = $this->extract($source);
-
-            $source->update([
-                'latest_price' => $result->price,
-                'latest_rating' => $result->rating,
-                'latest_rating_count' => $result->ratingCount,
-                'rating_type' => $result->ratingType,
-                'latest_details' => $result->details ?: null,
-                'buy_url' => $result->buyUrl ?: $source->buy_url,
-                'last_checked_at' => now(),
-                'last_status' => $result->price === 0 ? 'empty' : 'success',
-                'last_error' => null,
-            ]);
-            $source->history()->create([
-                'price' => $result->price,
-                'rating' => $result->rating,
-                'rating_count' => $result->ratingCount,
-                'rating_type' => $result->ratingType,
-                'is_available' => $result->price > 0,
-                'buy_url' => $result->buyUrl,
-                'offer_title' => $result->details['offer_title'] ?? null,
-                'departure_at' => $result->details['departure_at'] ?? null,
-                'return_at' => $result->details['return_at'] ?? null,
-                'details' => $result->details ?: null,
-                'observed_at' => now(),
-            ]);
-
-            $this->enrichContent($source->fresh(), $result);
-
-            return true;
+            return $this->storeResult($source, $this->extract($source));
         } catch (Throwable $exception) {
+            foreach ($this->sourceUrlResolver->candidates($source) as $candidate) {
+                try {
+                    $source->update(['source_url' => $candidate, 'buy_url' => $candidate]);
+
+                    return $this->storeResult($source, $this->extract($source));
+                } catch (Throwable $retryException) {
+                    $exception = $retryException;
+                }
+            }
+
             $tour = $source->tour;
             $source->delete();
 
@@ -80,6 +63,38 @@ class PriceCrawler
 
             return false;
         }
+    }
+
+    private function storeResult(PriceSource $source, CrawlResult $result): bool
+    {
+        $source->update([
+            'latest_price' => $result->price,
+            'latest_rating' => $result->rating,
+            'latest_rating_count' => $result->ratingCount,
+            'rating_type' => $result->ratingType,
+            'latest_details' => $result->details ?: null,
+            'buy_url' => $result->buyUrl ?: $source->buy_url,
+            'last_checked_at' => now(),
+            'last_status' => $result->price === 0 ? 'empty' : 'success',
+            'last_error' => null,
+        ]);
+        $source->history()->create([
+            'price' => $result->price,
+            'rating' => $result->rating,
+            'rating_count' => $result->ratingCount,
+            'rating_type' => $result->ratingType,
+            'is_available' => $result->price > 0,
+            'buy_url' => $result->buyUrl,
+            'offer_title' => $result->details['offer_title'] ?? null,
+            'departure_at' => $result->details['departure_at'] ?? null,
+            'return_at' => $result->details['return_at'] ?? null,
+            'details' => $result->details ?: null,
+            'observed_at' => now(),
+        ]);
+
+        $this->enrichContent($source->fresh(), $result);
+
+        return true;
     }
 
     public function crawlContent(PriceSource $source, bool $force = false): bool

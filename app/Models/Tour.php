@@ -32,9 +32,29 @@ class Tour extends Model
         return 'slug';
     }
 
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $tour = $this->where($field ?: $this->getRouteKeyName(), $value)->first();
+        if ($tour) {
+            return $tour;
+        }
+
+        $redirect = TourSlugRedirect::query()
+            ->where('old_slug', $value)
+            ->with('tour')
+            ->first();
+
+        return $redirect?->tour?->setAttribute('resolved_from_slug', $value);
+    }
+
     public function priceSources(): HasMany
     {
         return $this->hasMany(PriceSource::class);
+    }
+
+    public function slugRedirects(): HasMany
+    {
+        return $this->hasMany(TourSlugRedirect::class);
     }
 
     public function priceAlerts(): HasMany
