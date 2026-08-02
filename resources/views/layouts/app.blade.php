@@ -11,7 +11,10 @@
 <body>
     <header class="site-header">
         <div class="container nav-wrap">
-            <a class="brand" href="{{ route('home') }}"><span>گ</span>یت</a>
+            <div class="header-branding">
+                <a class="brand" href="{{ route('home') }}"><span>گ</span>یت</a>
+                <span class="header-slogan">مرجع تخصصی مقایسه تور و هتل و اقامتگاه و ویزا</span>
+            </div>
             <div class="header-search" data-suggestions-url="{{ route('search.suggestions') }}">
                 <form action="{{ route('search.index') }}" method="get" role="search">
                     <input id="site-search" type="search" name="q" value="{{ request()->routeIs('search.*') ? request('q') : '' }}" placeholder="مثلاً سفر داخلی با ۴ میلیون…" minlength="3" autocomplete="off" aria-label="جست‌وجوی خدمات سفر" aria-controls="search-suggestions" aria-expanded="false">

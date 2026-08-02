@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\PriceSource;
 use App\Services\Outbound\DestinationLinkValidator;
+use App\Services\Outbound\RejectedUrlRegistry;
 use App\Services\PriceCrawler;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -13,6 +14,8 @@ class RecoverPriceSourceLink implements ShouldQueue
 {
     use Queueable;
 
+    private const CANDIDATES_PER_ATTEMPT = 3;
+
     public int $timeout = 180;
 
     public int $tries = 3;
@@ -21,43 +24,59 @@ class RecoverPriceSourceLink implements ShouldQueue
 
     public function __construct(public int $sourceId) {}
 
-    public function handle(PriceCrawler $crawler, DestinationLinkValidator $validator): void
-    {
+    public function handle(
+        PriceCrawler $crawler,
+        DestinationLinkValidator $validator,
+        RejectedUrlRegistry $rejectedUrls,
+    ): void {
         $source = PriceSource::with('tour')->find($this->sourceId);
         if (! $source || ! in_array($source->last_status, ['broken_link', 'recovery_failed'], true)) {
             return;
         }
 
-        if (! $crawler->crawl($source, false)) {
-            throw new RuntimeException('هنوز لینک جایگزین معتبری از این منبع پیدا نشده است.');
-        }
+        for ($attempt = 0; $attempt < self::CANDIDATES_PER_ATTEMPT; $attempt++) {
+            if (! $crawler->crawl($source, false)) {
+                break;
+            }
 
-        $source->refresh();
-        $destination = $source->buy_url ?: $source->source_url;
-        if (in_array($destination, $source->rejected_urls ?? [], true)) {
-            $source->update([
+            $source->refresh();
+            $destination = $source->buy_url ?: $source->source_url;
+            $alreadyRejected = $rejectedUrls->contains($source->rejected_urls ?? [], $destination);
+            $validation = $alreadyRejected
+                ? DestinationLinkValidator::BROKEN
+                : $validator->check($destination);
+
+            if ($validation === DestinationLinkValidator::VALID && (int) $source->latest_price > 0) {
+                $source->update([
+                    'is_active' => true,
+                    'last_status' => 'success',
+                    'last_error' => null,
+                    'last_checked_at' => now(),
+                ]);
+
+                return;
+            }
+
+            $definitivelyBroken = $alreadyRejected || $validation === DestinationLinkValidator::BROKEN;
+            $updates = [
                 'is_active' => false,
                 'last_status' => 'recovery_failed',
-                'last_error' => 'کراولر همان لینک خراب قبلی را پیدا کرد؛ این URL دوباره فعال نمی‌شود.',
-            ]);
+                'last_error' => match (true) {
+                    $definitivelyBroken => 'لینک جایگزین خراب بود؛ همان لحظه کنار گذاشته شد و گزینه بعدی بررسی می‌شود.',
+                    $validation === DestinationLinkValidator::UNKNOWN => 'اعتبار لینک به‌علت خطای موقت قابل تأیید نبود؛ بدون مسدودسازی دائمی دوباره تلاش می‌شود.',
+                    default => 'لینک جایگزین باز می‌شود اما هنوز قیمت معتبری از آن خوانده نشده است.',
+                },
+            ];
+            if ($definitivelyBroken) {
+                $updates['rejected_urls'] = $rejectedUrls->add($source->rejected_urls ?? [], $destination);
+            }
+            $source->update($updates);
 
-            throw new RuntimeException('URL بازیابی‌شده با یکی از لینک‌های خراب قبلی یکسان است.');
+            if ($validation === DestinationLinkValidator::UNKNOWN) {
+                break;
+            }
         }
-        if ($validator->check($destination) !== DestinationLinkValidator::VALID) {
-            $source->update([
-                'is_active' => false,
-                'last_status' => 'recovery_failed',
-                'last_error' => 'لینک پیدا شده هنوز پاسخ معتبر نمی‌دهد؛ بازیابی دوباره تلاش می‌شود.',
-            ]);
 
-            throw new RuntimeException('لینک جایگزین پیدا شد اما هنوز پاسخ معتبر نمی‌دهد.');
-        }
-
-        $source->update([
-            'is_active' => true,
-            'last_status' => 'success',
-            'last_error' => null,
-            'last_checked_at' => now(),
-        ]);
+        throw new RuntimeException('پس از بررسی چند کاندیدا، هنوز لینک جایگزین معتبر و دارای قیمت پیدا نشده است.');
     }
 }

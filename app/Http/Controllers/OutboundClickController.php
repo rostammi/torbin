@@ -6,6 +6,7 @@ use App\Jobs\RecoverPriceSourceLink;
 use App\Models\PriceSource;
 use App\Services\Billing\AgencyBillingService;
 use App\Services\Outbound\DestinationLinkValidator;
+use App\Services\Outbound\RejectedUrlRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -16,8 +17,8 @@ class OutboundClickController extends Controller
         PriceSource $source,
         AgencyBillingService $billing,
         DestinationLinkValidator $validator,
-    ): RedirectResponse
-    {
+        RejectedUrlRegistry $rejectedUrls,
+    ): RedirectResponse {
         abort_unless($source->tour?->is_active, 404);
         if (! $source->is_active && in_array($source->last_status, ['broken_link', 'recovery_failed'], true)) {
             return $this->brokenLinkResponse($source);
@@ -27,13 +28,13 @@ class OutboundClickController extends Controller
         $destination = $source->buy_url ?: $source->source_url;
         if (! filter_var($destination, FILTER_VALIDATE_URL)
             || ! in_array(parse_url($destination, PHP_URL_SCHEME), ['http', 'https'], true)) {
-            $this->quarantine($source, 'آدرس لینک خرید نامعتبر بود و برای بازیابی در صف قرار گرفت.');
+            $this->quarantine($source, 'آدرس لینک خرید نامعتبر بود و برای بازیابی در صف قرار گرفت.', $rejectedUrls);
 
             return $this->brokenLinkResponse($source);
         }
 
         if ($validator->check($destination) === DestinationLinkValidator::BROKEN) {
-            $this->quarantine($source, 'لینک خرید پاسخ ۴۰۴ یا ۴۱۰ داد و برای بازیابی در صف قرار گرفت.');
+            $this->quarantine($source, 'لینک خرید پاسخ ۴۰۴ یا ۴۱۰ داد و برای بازیابی در صف قرار گرفت.', $rejectedUrls);
 
             return $this->brokenLinkResponse($source);
         }
@@ -57,7 +58,7 @@ class OutboundClickController extends Controller
             ->with('error', 'این پیشنهاد منقضی شده و از فهرست حذف شد. لطفاً یکی از لینک‌های دیگر را انتخاب کنید؛ گیت در حال پیدا کردن لینک جایگزین است.');
     }
 
-    private function quarantine(PriceSource $source, string $error): void
+    private function quarantine(PriceSource $source, string $error, RejectedUrlRegistry $rejectedUrls): void
     {
         $disabled = PriceSource::query()
             ->whereKey($source->id)
@@ -71,12 +72,10 @@ class OutboundClickController extends Controller
         if ($disabled) {
             $source->refresh();
             $source->update([
-                'rejected_urls' => collect($source->rejected_urls ?? [])
-                    ->push($source->buy_url ?: $source->source_url)
-                    ->filter()
-                    ->unique()
-                    ->values()
-                    ->all(),
+                'rejected_urls' => $rejectedUrls->add(
+                    $source->rejected_urls ?? [],
+                    $source->buy_url ?: $source->source_url,
+                ),
             ]);
             RecoverPriceSourceLink::dispatch($source->id);
         }

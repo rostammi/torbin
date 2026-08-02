@@ -53,6 +53,7 @@ class SearchTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('id="site-search"', false)
+            ->assertSee('مرجع تخصصی مقایسه تور و هتل و اقامتگاه و ویزا')
             ->assertSee(route('search.suggestions'), false);
     }
 

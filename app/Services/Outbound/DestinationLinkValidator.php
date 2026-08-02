@@ -3,6 +3,7 @@
 namespace App\Services\Outbound;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -42,11 +43,47 @@ class DestinationLinkValidator
 
     private function request(string $url)
     {
-        return Http::timeout(8)
-            ->connectTimeout(3)
-            ->withUserAgent(config('crawler.user_agent'))
-            ->withOptions(['allow_redirects' => false, 'stream' => true])
-            ->get($url);
+        for ($redirects = 0; $redirects <= 5; $redirects++) {
+            $response = Http::timeout(8)
+                ->connectTimeout(3)
+                ->withUserAgent(config('crawler.user_agent'))
+                ->withOptions(['allow_redirects' => false, 'stream' => true])
+                ->get($url);
+
+            if (! in_array($response->status(), [301, 302, 303, 307, 308], true)) {
+                return $response;
+            }
+
+            $location = trim((string) $response->header('Location'));
+            if ($location === '') {
+                throw new RuntimeException('پاسخ انتقال، مقصد مشخصی ندارد.');
+            }
+            $url = $this->absoluteRedirectUrl($url, $location);
+            $this->assertPublicUrl($url);
+        }
+
+        throw new RuntimeException('تعداد انتقال‌های لینک بیش از حد مجاز است.');
+    }
+
+    private function absoluteRedirectUrl(string $baseUrl, string $location): string
+    {
+        if (filter_var($location, FILTER_VALIDATE_URL)) {
+            return $location;
+        }
+
+        $parts = parse_url($baseUrl);
+        $origin = ($parts['scheme'] ?? '').'://'.($parts['host'] ?? '')
+            .(isset($parts['port']) ? ':'.$parts['port'] : '');
+        if (str_starts_with($location, '//')) {
+            return ($parts['scheme'] ?? 'https').':'.$location;
+        }
+        if (str_starts_with($location, '/')) {
+            return $origin.$location;
+        }
+
+        $directory = Str::beforeLast($parts['path'] ?? '/', '/');
+
+        return $origin.'/'.ltrim($directory.'/'.$location, '/');
     }
 
     private function assertPublicUrl(string $url): void

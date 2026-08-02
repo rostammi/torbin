@@ -89,6 +89,32 @@ class AgencyBillingTest extends TestCase
             ->assertDontSee($source->provider_name);
     }
 
+    public function test_redirect_to_a_broken_page_is_not_accepted_as_a_valid_destination(): void
+    {
+        Queue::fake();
+        [$tour, $source] = $this->pricedSource();
+        $source->update([
+            'source_url' => 'https://93.184.216.34/tours',
+            'buy_url' => 'https://93.184.216.34/redirecting-offer',
+        ]);
+        Http::fake(function ($request) {
+            return str_contains($request->url(), 'redirecting-offer')
+                ? Http::response('', 302, ['Location' => '/gone-offer'])
+                : Http::response('', 404);
+        });
+
+        $this->get(route('outbound.click', $source))
+            ->assertRedirect($tour->publicUrl())
+            ->assertSessionHas('error');
+
+        $this->assertFalse($source->fresh()->is_active);
+        $this->assertContains(
+            'https://93.184.216.34/redirecting-offer',
+            $source->fresh()->rejected_urls,
+        );
+        Queue::assertPushed(RecoverPriceSourceLink::class);
+    }
+
     public function test_admin_can_set_click_cost_and_adjust_credit_with_a_ledger(): void
     {
         [, $source] = $this->pricedSource();

@@ -41,11 +41,16 @@ class PriceCrawler
             return $this->storeResult($source, $this->extract($source));
         } catch (Throwable $exception) {
             foreach ($this->sourceUrlResolver->candidates($source) as $candidate) {
+                $originalSourceUrl = $source->source_url;
+                $originalBuyUrl = $source->buy_url;
                 try {
-                    $source->update(['source_url' => $candidate, 'buy_url' => $candidate]);
+                    $source->setAttribute('source_url', $candidate);
+                    $source->setAttribute('buy_url', $candidate);
 
                     return $this->storeResult($source, $this->extract($source));
                 } catch (Throwable $retryException) {
+                    $source->setAttribute('source_url', $originalSourceUrl);
+                    $source->setAttribute('buy_url', $originalBuyUrl);
                     $exception = $retryException;
                 }
             }
@@ -77,6 +82,7 @@ class PriceCrawler
     private function storeResult(PriceSource $source, CrawlResult $result): bool
     {
         $source->update([
+            'source_url' => $source->source_url,
             'latest_price' => $result->price,
             'latest_rating' => $result->rating,
             'latest_rating_count' => $result->ratingCount,

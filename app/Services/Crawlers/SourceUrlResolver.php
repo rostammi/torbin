@@ -3,6 +3,7 @@
 namespace App\Services\Crawlers;
 
 use App\Models\PriceSource;
+use App\Services\Outbound\RejectedUrlRegistry;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
@@ -13,6 +14,8 @@ use Illuminate\Support\Str;
 class SourceUrlResolver
 {
     private const MAX_CANDIDATES = 3;
+
+    public function __construct(private readonly RejectedUrlRegistry $rejectedUrls) {}
 
     public function candidates(PriceSource $source): array
     {
@@ -37,7 +40,8 @@ class SourceUrlResolver
             }
 
             foreach ($this->matchingLinks($response->body(), $pageUrl, $keyword) as $candidate) {
-                if ($candidate !== $source->source_url) {
+                if ($candidate !== $source->source_url
+                    && ! $this->rejectedUrls->contains($source->rejected_urls ?? [], $candidate)) {
                     $candidates->push($candidate);
                 }
                 if ($candidates->unique()->count() >= self::MAX_CANDIDATES) {

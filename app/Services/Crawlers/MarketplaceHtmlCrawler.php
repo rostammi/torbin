@@ -3,6 +3,7 @@
 namespace App\Services\Crawlers;
 
 use App\Models\PriceSource;
+use App\Services\Outbound\RejectedUrlRegistry;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
@@ -14,6 +15,8 @@ use RuntimeException;
 class MarketplaceHtmlCrawler
 {
     private const MAX_DESTINATION_PAGES = 3;
+
+    public function __construct(private readonly RejectedUrlRegistry $rejectedUrls) {}
 
     public function crawl(PriceSource $source): CrawlResult
     {
@@ -221,20 +224,19 @@ class MarketplaceHtmlCrawler
 
     private function withoutRejectedUrls(array $offers, PriceSource $source): array
     {
-        $rejected = $source->rejected_urls ?? [];
-
         return collect($offers)
-            ->reject(fn (array $offer) => in_array($offer['url'] ?? null, $rejected, true))
+            ->reject(fn (array $offer) => $this->rejectedUrls->contains(
+                $source->rejected_urls ?? [],
+                $offer['url'] ?? null,
+            ))
             ->values()
             ->all();
     }
 
     private function withoutRejectedLinks(array $links, PriceSource $source): array
     {
-        $rejected = $source->rejected_urls ?? [];
-
         return collect($links)
-            ->reject(fn (string $url) => in_array($url, $rejected, true))
+            ->reject(fn (string $url) => $this->rejectedUrls->contains($source->rejected_urls ?? [], $url))
             ->values()
             ->all();
     }
@@ -272,7 +274,7 @@ class MarketplaceHtmlCrawler
         ];
 
         foreach ($candidates as $candidate) {
-            if (in_array($candidate, $source->rejected_urls ?? [], true)) {
+            if ($this->rejectedUrls->contains($source->rejected_urls ?? [], $candidate)) {
                 continue;
             }
             try {
