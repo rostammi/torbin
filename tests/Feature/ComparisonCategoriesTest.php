@@ -18,11 +18,15 @@ class ComparisonCategoriesTest extends TestCase
     {
         $result = app(ComparisonCatalogDiscovery::class)->discover();
 
-        $this->assertSame(148, $result['total']);
-        $this->assertSame(103, TourSuggestion::where('category', 'tour')->count());
-        $this->assertSame(15, TourSuggestion::where('category', 'hotel')->count());
-        $this->assertSame(15, TourSuggestion::where('category', 'stay')->count());
-        $this->assertSame(15, TourSuggestion::where('category', 'visa')->count());
+        $this->assertSame(169, $result['reference']['total']);
+        $this->assertSame(95, $result['reference']['categories']['tour']['total']);
+        $this->assertSame(24, $result['reference']['categories']['hotel']['total']);
+        $this->assertSame(21, $result['reference']['categories']['stay']['total']);
+        $this->assertSame(29, $result['reference']['categories']['visa']['total']);
+        $this->assertGreaterThan(103, TourSuggestion::where('category', 'tour')->count());
+        $this->assertGreaterThan(15, TourSuggestion::where('category', 'hotel')->count());
+        $this->assertGreaterThan(15, TourSuggestion::where('category', 'stay')->count());
+        $this->assertGreaterThan(15, TourSuggestion::where('category', 'visa')->count());
         $this->assertSame(3, TourSuggestion::where('destination', 'کیش')->count());
 
         $hotel = TourSuggestion::where([

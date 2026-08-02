@@ -1,5 +1,5 @@
 <article class="tour-card ad-result-card" aria-label="تبلیغات {{ $advertisement->advertiser_name }}">
-    <a href="{{ route('advertisements.click', $advertisement) }}" target="_blank" rel="sponsored noopener">
+    <a href="{{ route('advertisements.click', $advertisement) }}" target="_blank" rel="nofollow sponsored noopener">
         <div class="ad-result-image">
             @if($advertisement->image_url)
                 <img src="{{ $advertisement->image_url }}" alt="{{ $advertisement->title ?: $advertisement->advertiser_name }}">

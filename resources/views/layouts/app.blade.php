@@ -14,7 +14,7 @@
             <a class="brand" href="{{ route('home') }}"><span>گ</span>یت</a>
             <div class="header-search" data-suggestions-url="{{ route('search.suggestions') }}">
                 <form action="{{ route('search.index') }}" method="get" role="search">
-                    <input id="site-search" type="search" name="q" value="{{ request()->routeIs('search.*') ? request('q') : '' }}" placeholder="جست‌وجوی تور، هتل، اقامتگاه یا ویزا…" minlength="3" autocomplete="off" aria-label="جست‌وجوی خدمات سفر" aria-controls="search-suggestions" aria-expanded="false">
+                    <input id="site-search" type="search" name="q" value="{{ request()->routeIs('search.*') ? request('q') : '' }}" placeholder="مثلاً سفر داخلی با ۴ میلیون…" minlength="3" autocomplete="off" aria-label="جست‌وجوی خدمات سفر" aria-controls="search-suggestions" aria-expanded="false">
                     <button type="submit" aria-label="جست‌وجو">⌕</button>
                 </form>
                 <div id="search-suggestions" class="search-suggestions" role="listbox" hidden></div>

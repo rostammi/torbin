@@ -6,6 +6,7 @@
             <div class="image-placeholder">{{ mb_substr($tour->title, 0, 1) }}</div>
         @endif
         <span class="source-badge">مقایسه {{ $tour->compared_sources_count }} سایت</span>
+        @if($showCategoryBadge ?? false)<span class="category-badge">{{ $tour->categoryLabel() }}</span>@endif
     </a>
     <div class="card-body">
         <h3><a href="{{ $tour->publicUrl() }}">{{ $tour->title }}</a></h3>

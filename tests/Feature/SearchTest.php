@@ -82,7 +82,40 @@ class SearchTest extends TestCase
         $this->assertDatabaseCount('search_misses', 0);
     }
 
-    private function tour(string $title, string $slug, string $description, string $agency = 'آژانس نمونه', int $balance = 100_000): Tour
+    public function test_conversational_search_returns_only_affordable_domestic_tours(): void
+    {
+        $affordable = $this->tour('تور شیراز اقتصادی', 'affordable-shiraz', 'سفر داخلی', price: 3_500_000);
+        $expensive = $this->tour('تور کیش لوکس', 'expensive-kish', 'سفر داخلی', price: 5_000_000);
+        $foreign = $this->tour('تور استانبول اقتصادی', 'affordable-istanbul', 'سفر خارجی', price: 3_000_000);
+        $this->suggestion($affordable, 'شیراز', 'domestic');
+        $this->suggestion($expensive, 'کیش', 'domestic');
+        $this->suggestion($foreign, 'استانبول', 'foreign');
+
+        $response = $this->get(route('search.index', ['q' => 'سفر داخلی با ۴ میلیون تومن کجا میتونم برم']));
+
+        $response->assertOk()
+            ->assertSee('پیشنهادهای متناسب با بودجه شما')
+            ->assertSee('سفر داخلی')
+            ->assertSee('حداکثر 4,000,000 تومان')
+            ->assertSee($affordable->title)
+            ->assertDontSee($expensive->title)
+            ->assertDontSee($foreign->title);
+    }
+
+    public function test_conversational_suggestions_use_the_same_budget_filters(): void
+    {
+        $matching = $this->tour('تور قشم اقتصادی', 'matching-qeshm', 'سفر داخلی', price: 3_900_000);
+        $tooExpensive = $this->tour('تور مشهد ویژه', 'expensive-mashhad', 'سفر داخلی', price: 4_100_000);
+        $this->suggestion($matching, 'قشم', 'domestic');
+        $this->suggestion($tooExpensive, 'مشهد', 'domestic');
+
+        $this->getJson(route('search.suggestions', ['q' => 'تور داخلی تا ۴ میلیون']))
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('items.0.title', $matching->title);
+    }
+
+    private function tour(string $title, string $slug, string $description, string $agency = 'آژانس نمونه', int $balance = 100_000, int $price = 8_000_000): Tour
     {
         $tour = Tour::create([
             'title' => $title,
@@ -95,7 +128,7 @@ class SearchTest extends TestCase
             'source_url' => 'https://example.com/'.$slug,
             'buy_url' => 'https://example.com/'.$slug,
             'extraction_type' => 'manual',
-            'latest_price' => 8_000_000,
+            'latest_price' => $price,
             'currency' => 'تومان',
             'is_active' => true,
         ]);
@@ -105,5 +138,17 @@ class SearchTest extends TestCase
         ]);
 
         return $tour;
+    }
+
+    private function suggestion(Tour $tour, string $destination, string $region): void
+    {
+        $tour->suggestions()->create([
+            'category' => 'tour',
+            'keyword' => 'تور '.$destination,
+            'suggested_title' => 'تور '.$destination,
+            'destination' => $destination,
+            'status' => 'built',
+            'metadata' => ['region' => $region],
+        ]);
     }
 }

@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'provider_slugs' => [
+        'علیبابا' => 'alibaba',
+    ],
+
     'categories' => [
         'tour' => [
             'label' => 'تور',

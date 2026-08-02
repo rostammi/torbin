@@ -1,5 +1,5 @@
 <aside class="ad-banner {{ $class ?? '' }}" aria-label="تبلیغات">
-    <a href="{{ route('advertisements.click', $advertisement) }}" target="_blank" rel="sponsored noopener">
+    <a href="{{ route('advertisements.click', $advertisement) }}" target="_blank" rel="nofollow sponsored noopener">
         @if($advertisement->image_url)
             <img src="{{ $advertisement->image_url }}" alt="{{ $advertisement->title ?: $advertisement->advertiser_name }}">
         @endif

@@ -14,9 +14,14 @@ class SearchController extends Controller
     public function index(Request $request, TourSearch $search, SearchMissTracker $misses, AdvertisementManager $advertisements): View
     {
         $term = trim($request->string('q')->toString());
-        $tours = mb_strlen($term) >= 3
-            ? $search->query($term)->paginate(12)->withQueryString()
-            : null;
+        $intent = $search->intent($term);
+        $tours = null;
+        if (mb_strlen($term) >= 3) {
+            $query = $intent->isRecommendation
+                ? $search->recommendations($intent)
+                : $search->query($term);
+            $tours = $query->paginate(12)->withQueryString();
+        }
 
         if ($tours && $tours->total() === 0 && $tours->currentPage() === 1) {
             $misses->track($term, $request);
@@ -24,7 +29,7 @@ class SearchController extends Controller
         $searchTopAd = $advertisements->forPlacement('search_top')->first();
         $searchResultAd = $tours ? $advertisements->forPlacement('search_result')->first() : null;
 
-        return view('search.index', compact('term', 'tours', 'searchTopAd', 'searchResultAd'));
+        return view('search.index', compact('term', 'intent', 'tours', 'searchTopAd', 'searchResultAd'));
     }
 
     public function suggestions(Request $request, TourSearch $search): JsonResponse
@@ -34,7 +39,10 @@ class SearchController extends Controller
             return response()->json(['items' => [], 'total' => 0, 'minimum_characters' => 3]);
         }
 
-        $query = $search->query($term);
+        $intent = $search->intent($term);
+        $query = $intent->isRecommendation
+            ? $search->recommendations($intent)
+            : $search->query($term);
         $total = (clone $query)->count();
         $items = $query->limit(4)->get()->map(fn ($tour) => [
             'title' => $tour->title,

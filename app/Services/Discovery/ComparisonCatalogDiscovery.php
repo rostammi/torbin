@@ -6,7 +6,10 @@ use App\Models\TourSuggestion;
 
 class ComparisonCatalogDiscovery
 {
-    public function __construct(private readonly PopularTourDiscovery $tours) {}
+    public function __construct(
+        private readonly PopularTourDiscovery $tours,
+        private readonly GeytReferenceCatalogDiscovery $reference,
+    ) {}
 
     public function discover(): array
     {
@@ -19,7 +22,9 @@ class ComparisonCatalogDiscovery
             $total += $results[$category]['total'];
         }
 
-        return ['total' => $total, 'categories' => $results];
+        $reference = $this->reference->discover();
+
+        return ['total' => $total + $reference['created'], 'categories' => $results, 'reference' => $reference];
     }
 
     public function discoverCategory(string $category): array

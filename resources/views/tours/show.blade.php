@@ -35,7 +35,7 @@
             @if ($tour->gallery)
                 <div class="gallery">
                     @foreach ($tour->gallery as $image)
-                        <a href="{{ Storage::url($image) }}" target="_blank">
+                        <a href="{{ Storage::url($image) }}" target="_blank" rel="noopener">
                             <img src="{{ Storage::url($image) }}" alt="تصویر {{ $tour->title }}">
                         </a>
                     @endforeach
@@ -49,13 +49,13 @@
                         @foreach ($tour->image_sources as $source)
                             <li>
                                 @if(data_get($source, 'page_url'))
-                                    <a href="{{ data_get($source, 'page_url') }}" target="_blank" rel="noopener noreferrer">{{ data_get($source, 'artist', 'Wikimedia Commons') }}</a>
+                                    <a href="{{ data_get($source, 'page_url') }}" target="_blank" rel="nofollow noopener noreferrer">{{ data_get($source, 'artist', 'Wikimedia Commons') }}</a>
                                 @else
                                     <span>{{ data_get($source, 'artist', 'آپلود دستی') }}</span>
                                 @endif
                                 <span>—</span>
                                 @if (data_get($source, 'license_url'))
-                                    <a href="{{ data_get($source, 'license_url') }}" target="_blank" rel="license noopener noreferrer">{{ data_get($source, 'license', 'مجوز آزاد') }}</a>
+                                    <a href="{{ data_get($source, 'license_url') }}" target="_blank" rel="license nofollow noopener noreferrer">{{ data_get($source, 'license', 'مجوز آزاد') }}</a>
                                 @else
                                     <span>{{ data_get($source, 'license', 'مجوز آزاد') }}</span>
                                 @endif
@@ -68,7 +68,7 @@
             @if ($tour->video_url)
                 <div class="video-box">
                     <h3>ویدئوی تور</h3>
-                    <a class="button button-secondary" href="{{ $tour->video_url }}" target="_blank" rel="noopener">تماشای ویدئو ↗</a>
+                    <a class="button button-secondary" href="{{ $tour->video_url }}" target="_blank" rel="nofollow noopener">تماشای ویدئو ↗</a>
                 </div>
             @endif
         </article>
@@ -88,7 +88,13 @@
                         <div class="provider">
                             <span class="provider-rank">{{ $index + 1 }}</span>
                             <div>
-                                <strong>{{ $source->provider_name }}</strong>
+                                <strong>
+                                    @if($source->agency)
+                                        <a class="provider-name-link" href="{{ $source->agency->publicUrl() }}">{{ $source->provider_name }}</a>
+                                    @else
+                                        {{ $source->provider_name }}
+                                    @endif
+                                </strong>
                                 @if(data_get($source->latest_details, 'hotel'))<small>{{ data_get($source->latest_details, 'hotel') }}</small>@endif
                                 <small>بررسی {{ optional($source->last_checked_at)->diffForHumans() ?? 'اخیر' }}</small>
                                 @if($source->latest_rating !== null)

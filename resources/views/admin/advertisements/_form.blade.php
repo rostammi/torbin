@@ -14,7 +14,7 @@
 </div>
 <label>توضیح کوتاه<textarea name="subtitle" rows="3" maxlength="500">{{ old('subtitle', $advertisement->subtitle) }}</textarea></label>
 <div class="form-grid">
-    <label>تصویر بنر / اسلاید<input type="file" name="image" accept="image/*">@if($advertisement->image_url)<small><a href="{{ $advertisement->image_url }}" target="_blank">مشاهده تصویر فعلی</a></small>@endif</label>
+    <label>تصویر بنر / اسلاید<input type="file" name="image" accept="image/*">@if($advertisement->image_url)<small><a href="{{ $advertisement->image_url }}" target="_blank" rel="nofollow noopener">مشاهده تصویر فعلی</a></small>@endif</label>
     <label>لینک مقصد *<input type="url" dir="ltr" name="destination_url" value="{{ old('destination_url', $advertisement->destination_url) }}" required placeholder="https://agency.example/tour"></label>
 </div>
 <div class="form-grid thirds">

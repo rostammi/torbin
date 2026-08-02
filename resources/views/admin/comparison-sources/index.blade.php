@@ -24,7 +24,7 @@
                     <tr>
                         <td>
                             <strong>{{ $source->name }}</strong>
-                            <small><a dir="ltr" target="_blank" rel="noopener noreferrer" href="{{ $source->homepage_url }}">{{ $source->homepage_url }}</a></small>
+                            <small><a dir="ltr" target="_blank" rel="nofollow noopener noreferrer" href="{{ $source->homepage_url }}">{{ $source->homepage_url }}</a></small>
                             @unless($source->is_active)<span class="status">غیرفعال</span>@endunless
                         </td>
                         <td>

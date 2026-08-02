@@ -21,7 +21,7 @@
                 <tbody>
                 @forelse ($runs as $run)
                     <tr>
-                        <td><strong>{{ match($run->type) {'discover_tours' => 'کشف تورها', 'scan_comparison_source' => 'اسکن منبع مقایسه', 'provision_tour' => 'ساخت خودکار تور', 'provision_all_tours' => 'ساخت/به‌روزرسانی همه تورها', 'prices' => 'قیمت‌ها', 'content' => 'محتواها', 'images' => 'تصاویر تورها', 'add_tour_images' => 'افزودن تصاویر یک تور', 'refresh_tour_images' => 'تعویض تصاویر یک تور', default => 'همگام‌سازی کامل'} }}</strong><small>{{ $run->user?->name ?? 'زمان‌بندی سیستم' }}</small></td>
+                        <td><strong>{{ match($run->type) {'discover_tours' => 'کشف تورها', 'import_geyt_catalog' => 'تکمیل کاتالوگ geyt.ir', 'scan_comparison_source' => 'اسکن منبع مقایسه', 'provision_tour' => 'ساخت خودکار تور', 'provision_all_tours' => 'ساخت/به‌روزرسانی همه تورها', 'prices' => 'قیمت‌ها', 'content' => 'محتواها', 'images' => 'تصاویر تورها', 'add_tour_images' => 'افزودن تصاویر یک تور', 'refresh_tour_images' => 'تعویض تصاویر یک تور', default => 'همگام‌سازی کامل'} }}</strong><small>{{ $run->user?->name ?? 'زمان‌بندی سیستم' }}</small></td>
                         <td>{{ $run->started_at?->diffForHumans() }}</td>
                         <td><span class="status {{ $run->status === 'success' ? 'success' : ($run->status === 'failed' ? 'failed' : '') }}">{{ match($run->status) {'success' => 'موفق', 'partial' => 'بخشی موفق', 'failed' => 'ناموفق', default => 'در حال اجرا'} }}</span></td>
                         <td>{{ $run->successful }} / {{ $run->total }}</td>
