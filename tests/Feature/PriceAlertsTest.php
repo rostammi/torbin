@@ -25,6 +25,8 @@ class PriceAlertsTest extends TestCase
         $alert = PriceAlert::firstOrFail();
         $this->assertSame('09123456789', $alert->phone);
         $this->assertSame(8_000_000, $alert->target_price);
+        $this->assertSame('price_drop', $alert->origin);
+        $this->assertSame('pending', $alert->contact_status);
         $this->assertTrue($alert->is_active);
         $this->assertNotSame('09123456789', $alert->getRawOriginal('phone'));
     }
@@ -67,6 +69,43 @@ class PriceAlertsTest extends TestCase
             ->assertOk()
             ->assertSee('خبرم کن ارزان‌تر شد')
             ->assertSee('09123456789');
+    }
+
+    public function test_visitor_can_request_a_call_when_the_page_only_has_a_contact_offer(): void
+    {
+        $tour = Tour::create([
+            'title' => 'اقامتگاه بدون قیمت',
+            'slug' => 'stay-without-price',
+            'category' => 'stay',
+            'description' => 'توضیحات',
+            'is_active' => true,
+        ]);
+        $tour->priceSources()->create([
+            'provider_name' => 'ارائه‌دهنده نمونه',
+            'source_url' => 'https://example.com/stay',
+            'buy_url' => 'https://example.com/stay',
+            'extraction_type' => 'manual',
+            'latest_price' => null,
+            'currency' => 'تومان',
+            'is_active' => true,
+        ]);
+
+        $this->get(route('stays.show', $tour))
+            ->assertOk()
+            ->assertSee('درخواست استعلام تلفنی')
+            ->assertSee('ثبت درخواست تماس');
+
+        $this->post(route('price-alerts.store', $tour), [
+            'phone' => '۰۹۱۲۳۴۵۶۷۸۹',
+            'consent' => '1',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $request = PriceAlert::sole();
+        $this->assertSame('09123456789', $request->phone);
+        $this->assertSame('no_price_contact', $request->origin);
+        $this->assertSame('pending', $request->contact_status);
+        $this->assertNull($request->target_price);
+        $this->assertFalse($request->is_active);
     }
 
     private function pricedTour(): array

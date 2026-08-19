@@ -22,12 +22,16 @@ class ProvisionReferenceSuggestion implements ShouldQueue
 
     public function handle(TourProvisioner $provisioner): void
     {
+        if (SyncRun::find($this->runId)?->status === 'cancelled') {
+            return;
+        }
+
         try {
             $provisioner->provision(TourSuggestion::findOrFail($this->suggestionId));
-            SyncRun::whereKey($this->runId)->increment('successful');
+            SyncRun::whereKey($this->runId)->where('status', 'running')->increment('successful');
         } catch (Throwable $exception) {
             TourSuggestion::whereKey($this->suggestionId)->update(['status' => 'failed']);
-            SyncRun::whereKey($this->runId)->increment('failed');
+            SyncRun::whereKey($this->runId)->where('status', 'running')->increment('failed');
             report($exception);
         } finally {
             $this->finishRunWhenComplete();

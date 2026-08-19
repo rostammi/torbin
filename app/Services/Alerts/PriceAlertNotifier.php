@@ -24,6 +24,7 @@ class PriceAlertNotifier
 
         $alerts = $tour->priceAlerts()
             ->where('is_active', true)
+            ->where('origin', 'price_drop')
             ->where('target_price', '>', $offer->latest_price)
             ->get();
         $sent = 0;

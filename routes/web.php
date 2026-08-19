@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdvertisementController;
 use App\Http\Controllers\Admin\AgencyController;
 use App\Http\Controllers\Admin\ComparisonSourceController;
+use App\Http\Controllers\Admin\ContactRequestController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PriceSourceController;
 use App\Http\Controllers\Admin\StaticPageController as AdminStaticPageController;
@@ -62,6 +63,10 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
         Route::post('suggestions/{suggestion}/create-tour', [TourSuggestionController::class, 'store'])->name('suggestions.store');
         Route::get('sync', [SyncController::class, 'index'])->name('sync.index');
         Route::post('sync', [SyncController::class, 'run'])->name('sync.run');
+        Route::post('sync/{syncRun}/cancel', [SyncController::class, 'cancel'])->name('sync.cancel');
+        Route::post('sync/{syncRun}/retry', [SyncController::class, 'retry'])->name('sync.retry');
+        Route::get('contact-requests', [ContactRequestController::class, 'index'])->name('contact-requests.index');
+        Route::put('contact-requests/{contactRequest}', [ContactRequestController::class, 'update'])->name('contact-requests.update');
         Route::get('agencies', [AgencyController::class, 'index'])->name('agencies.index');
         Route::put('agencies/comparison-contact', [AgencyController::class, 'updateComparisonContact'])->name('agencies.comparison-contact');
         Route::put('agencies/featured', [PriceSourceController::class, 'updateAgencyFeatured'])->name('agencies.featured');

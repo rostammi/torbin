@@ -7,6 +7,7 @@ use App\Models\Tour;
 use App\Models\TourSuggestion;
 use App\Models\User;
 use App\Services\Discovery\PopularTourDiscovery;
+use App\Services\Images\TourImageCrawler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -61,20 +62,31 @@ class TourImageCrawlerTest extends TestCase
             'cover_image' => 'tours/manual/existing.jpg',
             'is_active' => true,
         ]);
+        $hotelWithoutImage = Tour::create([
+            'category' => 'hotel',
+            'title' => 'هتل بدون تصویر',
+            'slug' => 'hotel-without-image',
+            'description' => 'توضیحات',
+            'is_active' => true,
+        ]);
 
         $this->actingAs(User::factory()->create())
             ->get(route('admin.sync.index'))
             ->assertOk()
             ->assertSee('تصاویر تورهای بدون عکس')
-            ->assertSee('1 تور بدون عکس');
+            ->assertSee('تصاویر هتل‌های بدون عکس')
+            ->assertSee('تصاویر اقامتگاه‌های بدون عکس')
+            ->assertSee('تصاویر ویزاهای بدون عکس')
+            ->assertSee('1 تور بدون عکس')
+            ->assertSee('1 هتل بدون عکس');
 
         $this->actingAs(User::factory()->create())
-            ->post(route('admin.sync.run'), ['type' => 'images'])
+            ->post(route('admin.sync.run'), ['type' => 'images_tours'])
             ->assertRedirect()
             ->assertSessionHas('success');
 
         $tour->refresh();
-        $run = SyncRun::where('type', 'images')->sole();
+        $run = SyncRun::where('type', 'images_tours')->sole();
         $this->assertSame('success', $run->status);
         $this->assertSame(1, $run->total);
         $this->assertSame(1, $run->successful);
@@ -85,6 +97,7 @@ class TourImageCrawlerTest extends TestCase
         Storage::disk('public')->assertExists($tour->cover_image);
         Storage::disk('public')->assertExists($tour->gallery[0]);
         $this->assertSame('tours/manual/existing.jpg', $tourWithImage->fresh()->cover_image);
+        $this->assertNull($hotelWithoutImage->fresh()->cover_image);
 
         $this->get(route('tours.show', $tour))
             ->assertOk()
@@ -105,6 +118,99 @@ class TourImageCrawlerTest extends TestCase
             [...PopularTourDiscovery::DOMESTIC_DESTINATIONS, ...PopularTourDiscovery::FOREIGN_DESTINATIONS],
             array_keys(config('crawler.images.aliases')),
         )));
+    }
+
+    public function test_largest_undersized_image_is_scaled_and_center_cropped_when_no_valid_image_exists(): void
+    {
+        Storage::fake('public');
+        config()->set('crawler.images.count', 2);
+        config()->set('crawler.images.min_width', 4);
+        config()->set('crawler.images.min_height', 2);
+        config()->set('crawler.images.min_aspect_ratio', 1.2);
+
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+        $smaller = $this->commonsImage('File:Small fallback.jpg', 'https://upload.wikimedia.org/small-fallback.png', 'عکاس کوچک');
+        $smaller['imageinfo'][0]['width'] = 1;
+        $smaller['imageinfo'][0]['height'] = 1;
+        $largest = $this->commonsImage('File:Largest fallback.jpg', 'https://upload.wikimedia.org/largest-fallback.png', 'عکاس بزرگ');
+        $largest['imageinfo'][0]['width'] = 3;
+        $largest['imageinfo'][0]['height'] = 1;
+
+        Http::fake([
+            'commons.wikimedia.org/*' => Http::response(['query' => ['pages' => [$smaller, $largest]]]),
+            'upload.wikimedia.org/largest-fallback.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
+            'upload.wikimedia.org/small-fallback.png' => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        $tour = Tour::create([
+            'title' => 'صفحه بدون تصویر بزرگ',
+            'slug' => 'undersized-image-fallback',
+            'description' => 'توضیحات',
+            'is_active' => true,
+        ]);
+
+        $result = app(TourImageCrawler::class)->crawl($tour);
+
+        $tour->refresh();
+        $storedImage = Storage::disk('public')->get($tour->cover_image);
+        $size = getimagesizefromstring($storedImage);
+        $this->assertSame(1, $result['downloaded']);
+        $this->assertSame([4, 2], [$size[0], $size[1]]);
+        $this->assertTrue($tour->image_sources[0]['upscaled']);
+        $this->assertSame(1, $tour->image_sources[0]['original_width']);
+        $this->assertSame(1, $tour->image_sources[0]['original_height']);
+        $this->assertStringContainsString('Largest_fallback.jpg', $tour->image_sources[0]['page_url']);
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'small-fallback.png'));
+    }
+
+    public function test_stay_with_a_long_persian_title_uses_an_english_semantic_fallback_query(): void
+    {
+        Storage::fake('public');
+        config()->set('crawler.images.min_width', 4);
+        config()->set('crawler.images.min_height', 2);
+        config()->set('crawler.images.min_aspect_ratio', 1.2);
+
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+        $fallback = $this->commonsImage('File:Wooden cabin forest.jpg', 'https://upload.wikimedia.org/wooden-cabin.png', 'عکاس کلبه');
+        $fallback['imageinfo'][0]['width'] = 3;
+        $fallback['imageinfo'][0]['height'] = 1;
+
+        Http::fake(function (Request $request) use ($fallback, $png) {
+            if (str_contains($request->url(), 'upload.wikimedia.org')) {
+                return Http::response($png, 200, ['Content-Type' => 'image/png']);
+            }
+
+            return Http::response([
+                'query' => ['pages' => $request['gsrsearch'] === 'wooden cabin forest' ? [$fallback] : []],
+            ]);
+        });
+
+        $stay = Tour::create([
+            'category' => 'stay',
+            'title' => 'اقامتگاه کلبه چوبی و جنگلی | مقایسه قیمت و رزرو',
+            'slug' => 'wooden-forest-cabin',
+            'description' => 'توضیحات',
+            'is_active' => true,
+        ]);
+        TourSuggestion::create([
+            'category' => 'stay',
+            'keyword' => 'اقامتگاه کلبه چوبی و جنگلی',
+            'suggested_title' => $stay->title,
+            'destination' => 'کلبه چوبی و جنگلی',
+            'trend_score' => 50,
+            'source' => 'geyt_reference',
+            'status' => 'created',
+            'tour_id' => $stay->id,
+        ]);
+
+        $result = app(TourImageCrawler::class)->crawl($stay);
+
+        $stay->refresh();
+        $this->assertSame(1, $result['downloaded']);
+        $this->assertNotNull($stay->cover_image);
+        $this->assertTrue($stay->image_sources[0]['upscaled']);
+        Http::assertSent(fn (Request $request) => str_contains($request->url(), 'commons.wikimedia.org')
+            && $request['gsrsearch'] === 'wooden cabin forest');
     }
 
     public function test_image_sync_cannot_be_queued_twice_while_a_run_is_active(): void

@@ -22,25 +22,47 @@
             @endforeach
             <article class="panel sync-card"><span>{{ $stats['stale_prices'] }} منبع نیازمند بروزرسانی</span><h2>قیمت‌ها و امتیازها</h2><p>قیمت، موجودی، لینک خرید و امتیاز همه‌ی منابع فعال را دوباره بخوان.</p><form method="post" action="{{ route('admin.sync.run') }}">@csrf<input type="hidden" name="type" value="prices"><button class="button">خواندن همه قیمت‌ها</button></form></article>
             <article class="panel sync-card"><span>{{ $stats['stale_content'] }} محتوای قدیمی</span><h2>محتوای ارائه‌دهنده‌ها</h2><p>موضوعات مفید صفحات ارائه‌دهندگان را استخراج و محتوای خودکار تور را تلفیق کن.</p><form method="post" action="{{ route('admin.sync.run') }}">@csrf<input type="hidden" name="type" value="content"><button class="button">خواندن همه محتواها</button></form></article>
-            <article class="panel sync-card"><span>{{ $stats['missing_images'] }} تور بدون عکس</span><h2>تصاویر تورهای بدون عکس</h2><p>تصاویر مرتبط و باکیفیت را پیدا کن، ابعادشان را بررسی کن و به کاور و گالری تور اضافه کن.</p><form method="post" action="{{ route('admin.sync.run') }}">@csrf<input type="hidden" name="type" value="images"><button class="button">دریافت تصاویر تورها</button></form></article>
+            @foreach(config('comparison.categories') as $categoryKey => $categoryConfig)
+                @php($imageType = ['tour' => 'images_tours', 'hotel' => 'images_hotels', 'stay' => 'images_stays', 'visa' => 'images_visas'][$categoryKey])
+                @php($possessivePlural = ['tour' => 'تورهای', 'hotel' => 'هتل‌های', 'stay' => 'اقامتگاه‌های', 'visa' => 'ویزاهای'][$categoryKey])
+                <article class="panel sync-card">
+                    <span>{{ $stats['missing_images_by_category']->get($categoryKey, 0) }} {{ $categoryConfig['label'] }} بدون عکس</span>
+                    <h2>تصاویر {{ $possessivePlural }} بدون عکس</h2>
+                    <p>تصاویر مرتبط و باکیفیت را پیدا کن، ابعادشان را بررسی کن و به کاور و گالری {{ $categoryConfig['plural'] }} اضافه کن.</p>
+                    <form method="post" action="{{ route('admin.sync.run') }}">
+                        @csrf
+                        <input type="hidden" name="type" value="{{ $imageType }}">
+                        <button class="button">دریافت تصاویر {{ $categoryConfig['plural'] }}</button>
+                    </form>
+                </article>
+            @endforeach
             <article class="panel sync-card sync-all"><span>{{ $stats['sources'] }} منبع فعال</span><h2>همگام‌سازی کامل</h2><p>کشف تورها، قیمت‌ها، امتیازها، محتواها و تصاویر را به‌ترتیب اجرا کن.</p><form method="post" action="{{ route('admin.sync.run') }}">@csrf<input type="hidden" name="type" value="all"><button class="button button-featured">اجرای همه عملیات</button></form></article>
         </div>
 
         <div class="subsection-head"><div><span class="eyebrow">گزارش اجرا</span><h2>آخرین همگام‌سازی‌ها</h2></div></div>
         <div class="panel table-wrap">
             <table>
-                <thead><tr><th>عملیات</th><th>شروع</th><th>نتیجه</th><th>موفق / کل</th><th>پیام</th></tr></thead>
+                <thead><tr><th>عملیات</th><th>شروع</th><th>نتیجه</th><th>موفق / کل</th><th>پیام</th><th>کنترل</th></tr></thead>
                 <tbody>
                 @forelse ($runs as $run)
                     <tr>
-                        <td><strong>{{ match($run->type) {'discover_tours' => 'کشف تورها', 'discover_hotels' => 'کشف هتل‌ها', 'discover_stays' => 'کشف اقامتگاه‌ها', 'discover_visas' => 'کشف ویزاها', 'import_geyt_catalog' => 'تکمیل کاتالوگ geyt.ir', 'provision_geyt_reference' => 'ساخت صفحات مرجع geyt.ir', 'scan_comparison_source' => 'اسکن منبع مقایسه', 'provision_tour' => 'ساخت خودکار تور', 'provision_all_tours' => 'ساخت/به‌روزرسانی همه تورها', 'prices' => 'قیمت‌ها', 'content' => 'محتواها', 'images' => 'تصاویر تورها', 'add_tour_images' => 'افزودن تصاویر یک تور', 'refresh_tour_images' => 'تعویض تصاویر یک تور', default => 'همگام‌سازی کامل'} }}</strong><small>{{ $run->user?->name ?? 'زمان‌بندی سیستم' }}</small></td>
+                        <td><strong>{{ match($run->type) {'discover_tours' => 'کشف تورها', 'discover_hotels' => 'کشف هتل‌ها', 'discover_stays' => 'کشف اقامتگاه‌ها', 'discover_visas' => 'کشف ویزاها', 'import_geyt_catalog' => 'تکمیل کاتالوگ geyt.ir', 'provision_geyt_reference' => 'ساخت صفحات مرجع geyt.ir', 'scan_comparison_source' => 'اسکن منبع مقایسه', 'provision_tour' => 'ساخت خودکار تور', 'provision_all_tours' => 'ساخت/به‌روزرسانی همه تورها', 'prices' => 'قیمت‌ها', 'content' => 'محتواها', 'images' => 'تصاویر همه دسته‌ها', 'images_tours' => 'تصاویر تورها', 'images_hotels' => 'تصاویر هتل‌ها', 'images_stays' => 'تصاویر اقامتگاه‌ها', 'images_visas' => 'تصاویر ویزاها', 'add_tour_images' => 'افزودن تصاویر یک صفحه', 'refresh_tour_images' => 'تعویض تصاویر یک صفحه', default => 'همگام‌سازی کامل'} }}</strong><small>{{ $run->user?->name ?? 'زمان‌بندی سیستم' }}</small></td>
                         <td>{{ $run->started_at?->diffForHumans() }}</td>
-                        <td><span class="status {{ $run->status === 'success' ? 'success' : ($run->status === 'failed' ? 'failed' : '') }}">{{ match($run->status) {'success' => 'موفق', 'partial' => 'بخشی موفق', 'failed' => 'ناموفق', default => 'در حال اجرا'} }}</span></td>
+                        <td><span class="status {{ $run->status === 'success' ? 'success' : (in_array($run->status, ['failed', 'cancelled']) ? 'failed' : '') }}">{{ match($run->status) {'success' => 'موفق', 'partial' => 'بخشی موفق', 'failed' => 'ناموفق', 'cancelled' => 'لغوشده', default => 'در حال اجرا'} }}</span></td>
                         <td>{{ $run->successful }} / {{ $run->total }}</td>
                         <td><small>{{ $run->error ?: ($run->finished_at ? 'پایان در '.$run->finished_at->format('H:i') : 'در حال اجرا') }}</small></td>
+                        <td class="job-actions">
+                            @if($run->canCancel())
+                                <form method="post" action="{{ route('admin.sync.cancel', $run) }}" onsubmit="return confirm('این عملیات لغو شود؟')">@csrf<button class="job-cancel-button">لغو</button></form>
+                            @elseif($run->canRetry())
+                                <form method="post" action="{{ route('admin.sync.retry', $run) }}">@csrf<button class="job-retry-button">{{ $run->status === 'partial' ? 'تلاش برای موارد ناموفق' : 'تلاش مجدد' }}</button></form>
+                            @else
+                                <span class="muted">—</span>
+                            @endif
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="empty-cell">هنوز عملیاتی اجرا نشده است.</td></tr>
+                    <tr><td colspan="6" class="empty-cell">هنوز عملیاتی اجرا نشده است.</td></tr>
                 @endforelse
                 </tbody>
             </table>

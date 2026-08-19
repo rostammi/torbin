@@ -33,14 +33,19 @@ class PriceAlertController extends Controller
             ->orderBy('latest_price')
             ->first();
 
-        if (! $offer) {
-            return back()->with('error', 'در حال حاضر قیمت فعالی برای ساخت هشدار وجود ندارد.')->withInput();
+        $origin = $offer ? 'price_drop' : 'no_price_contact';
+        if (! $offer && ! $tour->priceSources()
+            ->where('is_active', true)
+            ->where(fn ($query) => $query->whereNull('latest_price')->orWhere('latest_price', '<=', 0))
+            ->exists()) {
+            return back()->with('error', 'در حال حاضر پیشنهادی برای ثبت درخواست تماس وجود ندارد.')->withInput();
         }
 
         $phoneHash = hash_hmac('sha256', $phone, config('app.key'));
         $alert = PriceAlert::firstOrNew([
             'tour_id' => $tour->id,
             'phone_hash' => $phoneHash,
+            'origin' => $origin,
         ]);
 
         if (! $alert->exists) {
@@ -51,13 +56,17 @@ class PriceAlertController extends Controller
 
         $alert->fill([
             'phone' => $phone,
-            'target_price' => $offer->latest_price,
-            'currency' => $offer->currency,
-            'is_active' => true,
+            'target_price' => $offer?->latest_price,
+            'currency' => $offer?->currency ?? 'تومان',
+            'is_active' => $offer !== null,
+            'contact_status' => 'pending',
+            'contacted_at' => null,
             'last_error' => null,
         ])->save();
 
-        return back()->with('success', 'هشدار کاهش قیمت فعال شد؛ اگر قیمت از مبلغ فعلی کمتر شود به شما پیام می‌دهیم.');
+        return back()->with('success', $offer
+            ? 'هشدار کاهش قیمت فعال شد؛ اگر قیمت از مبلغ فعلی کمتر شود به شما پیام می‌دهیم.'
+            : 'شماره شما ثبت شد؛ برای اعلام قیمت و راهنمایی با شما تماس می‌گیریم.');
     }
 
     public function unsubscribe(string $token): RedirectResponse

@@ -22,11 +22,17 @@ class ScanComparisonSource implements ShouldQueue
     public function handle(ComparisonSourceScanner $scanner): void
     {
         $run = SyncRun::findOrFail($this->runId);
+        if ($run->status === 'cancelled') {
+            return;
+        }
         $source = ComparisonSource::findOrFail($this->sourceId);
         $run->update(['status' => 'running', 'started_at' => $run->started_at ?: now()]);
 
         try {
             $summary = $scanner->scan($source);
+            if ($run->fresh()->status === 'cancelled') {
+                return;
+            }
             $run->update([
                 'status' => 'success',
                 'successful' => 1,
@@ -34,6 +40,9 @@ class ScanComparisonSource implements ShouldQueue
                 'finished_at' => now(),
             ]);
         } catch (Throwable $exception) {
+            if ($run->fresh()->status === 'cancelled') {
+                return;
+            }
             $source->update([
                 'last_status' => 'failed',
                 'last_error' => mb_substr($exception->getMessage(), 0, 2000),

@@ -13,7 +13,7 @@ The application uses MySQL. On Ubuntu, install the required server and PHP drive
 
 ```bash
 sudo apt update
-sudo apt install mysql-server php8.5-mysql
+sudo apt install mysql-server php8.5-mysql ffmpeg
 sudo mysql
 ```
 
@@ -48,6 +48,8 @@ Provider-page content is checked during price crawls and by the daily `content:c
 php artisan schedule:work
 php artisan queue:work --timeout=1800
 ```
+
+The image crawler uses PHP GD when available and otherwise uses `ffmpeg` to upscale and center-crop the largest undersized Wikimedia image. Keep one of these image processors installed on every queue-worker host.
 
 ## Tour discovery and one-click provisioning
 

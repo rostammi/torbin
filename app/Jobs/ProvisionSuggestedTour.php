@@ -22,10 +22,17 @@ class ProvisionSuggestedTour implements ShouldQueue
     public function handle(TourProvisioner $provisioner): void
     {
         $run = SyncRun::findOrFail($this->runId);
+        if ($run->status === 'cancelled') {
+            return;
+        }
         try {
             $result = $provisioner->provision(TourSuggestion::findOrFail($this->suggestionId));
+            if ($run->fresh()->status === 'cancelled') {
+                return;
+            }
             $run->update([
                 'status' => 'success', 'successful' => 1, 'details' => [
+                    'suggestion_id' => $this->suggestionId,
                     'tour_id' => $result['tour']->id,
                     'action' => $result['created'] ? 'created' : 'updated',
                     'sources' => $result['sources'],
@@ -38,6 +45,9 @@ class ProvisionSuggestedTour implements ShouldQueue
                 ], 'finished_at' => now(),
             ]);
         } catch (Throwable $exception) {
+            if ($run->fresh()->status === 'cancelled') {
+                return;
+            }
             TourSuggestion::whereKey($this->suggestionId)->update(['status' => 'failed']);
             $run->update(['status' => 'failed', 'failed' => 1, 'error' => $exception->getMessage(), 'finished_at' => now()]);
 

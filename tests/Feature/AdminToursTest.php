@@ -127,4 +127,33 @@ class AdminToursTest extends TestCase
 
         $response->assertDontSee('<svg', false);
     }
+
+    public function test_tour_index_shows_the_first_image_and_clearly_marks_pages_without_images(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('tours/list-cover.jpg', 'cover');
+
+        Tour::create([
+            'title' => 'صفحه دارای عکس',
+            'slug' => 'page-with-image',
+            'description' => 'توضیحات',
+            'cover_image' => 'tours/list-cover.jpg',
+            'is_active' => true,
+        ]);
+        Tour::create([
+            'title' => 'صفحه بدون عکس',
+            'slug' => 'page-without-image',
+            'description' => 'توضیحات',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('admin.tours.index'))
+            ->assertOk()
+            ->assertSee('تصویر اول')
+            ->assertSee(Storage::url('tours/list-cover.jpg'))
+            ->assertSee('alt="تصویر اول صفحه دارای عکس"', false)
+            ->assertSee('بدون عکس')
+            ->assertSee('class="missing-image-button"', false);
+    }
 }

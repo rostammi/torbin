@@ -176,7 +176,10 @@ class TourDestinationConsolidator
         }
 
         foreach ($duplicate->priceAlerts()->get() as $alert) {
-            $exists = $canonical->priceAlerts()->where('phone_hash', $alert->phone_hash)->exists();
+            $exists = $canonical->priceAlerts()
+                ->where('phone_hash', $alert->phone_hash)
+                ->where('origin', $alert->origin)
+                ->exists();
             $exists ? $alert->delete() : $alert->update(['tour_id' => $canonical->id]);
         }
 

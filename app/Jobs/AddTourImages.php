@@ -32,9 +32,15 @@ class AddTourImages implements ShouldBeUnique, ShouldQueue
     public function handle(TourImageCrawler $crawler): void
     {
         $run = SyncRun::findOrFail($this->runId);
+        if ($run->status === 'cancelled') {
+            return;
+        }
 
         try {
             $result = $crawler->crawl(Tour::findOrFail($this->tourId), append: true, limit: 3);
+            if ($run->fresh()->status === 'cancelled') {
+                return;
+            }
             $run->update([
                 'status' => 'success',
                 'total' => 1,
@@ -47,6 +53,9 @@ class AddTourImages implements ShouldBeUnique, ShouldQueue
                 'finished_at' => now(),
             ]);
         } catch (Throwable $exception) {
+            if ($run->fresh()->status === 'cancelled') {
+                return;
+            }
             $run->update([
                 'status' => 'failed',
                 'total' => 1,

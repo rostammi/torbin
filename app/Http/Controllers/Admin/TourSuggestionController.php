@@ -65,7 +65,13 @@ class TourSuggestionController extends Controller
 
     public function store(TourSuggestion $suggestion): RedirectResponse
     {
-        $run = SyncRun::create(['user_id' => auth()->id(), 'type' => 'provision_tour', 'total' => 1, 'started_at' => now()]);
+        $run = SyncRun::create([
+            'user_id' => auth()->id(),
+            'type' => 'provision_tour',
+            'total' => 1,
+            'details' => ['suggestion_id' => $suggestion->id],
+            'started_at' => now(),
+        ]);
         try {
             ProvisionSuggestedTour::dispatch($suggestion->id, $run->id);
             $suggestion->refresh();

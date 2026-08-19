@@ -19,13 +19,22 @@ class CrawlMissingTourImages implements ShouldQueue
 
     public bool $failOnTimeout = true;
 
-    public function __construct(public int $runId) {}
+    public function __construct(
+        public int $runId,
+        public ?string $category = null,
+        public array $targetTourIds = [],
+    ) {}
 
     public function handle(TourImageCrawler $crawler): void
     {
         $run = SyncRun::findOrFail($this->runId);
+        if ($run->status === 'cancelled') {
+            return;
+        }
         $query = Tour::query()
             ->where(fn ($query) => $query->whereNull('cover_image')->orWhere('cover_image', ''))
+            ->when($this->category, fn ($query) => $query->where('category', $this->category))
+            ->when($this->targetTourIds, fn ($query) => $query->whereKey($this->targetTourIds))
             ->orderBy('id');
 
         $run->update([
@@ -36,16 +45,20 @@ class CrawlMissingTourImages implements ShouldQueue
             'error' => null,
         ]);
 
-        $details = ['downloaded' => 0, 'failures' => []];
+        $details = ['downloaded' => 0, 'failures' => [], 'failed_tour_ids' => []];
 
         try {
             foreach ($query->cursor() as $tour) {
+                if ($run->fresh()->status === 'cancelled') {
+                    return;
+                }
                 try {
                     $result = $crawler->crawl($tour);
                     $details['downloaded'] += $result['downloaded'];
                     $run->increment('successful');
                 } catch (Throwable $exception) {
                     $run->increment('failed');
+                    $details['failed_tour_ids'][] = $tour->id;
                     if (count($details['failures']) < 25) {
                         $details['failures'][] = [
                             'tour_id' => $tour->id,
@@ -58,13 +71,19 @@ class CrawlMissingTourImages implements ShouldQueue
             }
 
             $run->refresh();
+            if ($run->status === 'cancelled') {
+                return;
+            }
             $run->update([
                 'status' => $run->failed > 0 ? 'partial' : 'success',
                 'details' => ['images' => $details],
-                'error' => $run->failed > 0 ? "{$run->failed} تور بدون تصویر باقی ماند." : null,
+                'error' => $run->failed > 0 ? "{$run->failed} صفحه مقایسه بدون تصویر باقی ماند." : null,
                 'finished_at' => now(),
             ]);
         } catch (Throwable $exception) {
+            if ($run->fresh()->status === 'cancelled') {
+                return;
+            }
             $run->refresh()->update([
                 'status' => 'failed',
                 'details' => ['images' => $details],

@@ -135,19 +135,25 @@
                 @include('advertisements._banner', ['advertisement' => $offersBottomAd, 'class' => 'tour-offers-ad'])
             @endif
             @php($alertOffer = $tour->priceSources->first(fn ($item) => $item->latest_price > 0))
-            @if($alertOffer)
+            @if($alertOffer || $displayedSourcesCount > 0)
                 <div class="price-alert-box">
-                    <span class="eyebrow">هنوز گران است؟</span>
-                    <h3>خبرم کن ارزان‌تر شد</h3>
-                    <p>اگر قیمت این {{ $tour->categoryLabel() }} از {{ number_format($alertOffer->latest_price) }} {{ $alertOffer->currency }} کمتر شد، پیام می‌دهیم.</p>
+                    @if($alertOffer)
+                        <span class="eyebrow">هنوز گران است؟</span>
+                        <h3>خبرم کن ارزان‌تر شد</h3>
+                        <p>اگر قیمت این {{ $tour->categoryLabel() }} از {{ number_format($alertOffer->latest_price) }} {{ $alertOffer->currency }} کمتر شد، پیام می‌دهیم.</p>
+                    @else
+                        <span class="eyebrow">قیمت آنلاین پیدا نشد؟</span>
+                        <h3>درخواست استعلام تلفنی</h3>
+                        <p>شماره‌تان را بگذارید تا برای استعلام قیمت و راهنمایی درباره این {{ $tour->categoryLabel() }} با شما تماس بگیریم.</p>
+                    @endif
                     <form action="{{ route('price-alerts.store', $tour) }}" method="post">
                         @csrf
                         <div class="alert-phone-row">
                             <input type="tel" name="phone" dir="ltr" inputmode="numeric" autocomplete="tel" value="{{ old('phone') }}" placeholder="09123456789" required>
-                            <button class="button" type="submit">فعال‌کردن هشدار</button>
+                            <button class="button" type="submit">{{ $alertOffer ? 'فعال‌کردن هشدار' : 'ثبت درخواست تماس' }}</button>
                         </div>
                         @error('phone')<small class="field-error">{{ $message }}</small>@enderror
-                        <label class="alert-consent"><input type="checkbox" name="consent" value="1" required> با دریافت پیامک کاهش قیمت و امکان لغو آن موافقم.</label>
+                        <label class="alert-consent"><input type="checkbox" name="consent" value="1" required> {{ $alertOffer ? 'با دریافت پیامک کاهش قیمت و امکان لغو آن موافقم.' : 'با ثبت شماره و تماس کارشناسان برای اعلام قیمت موافقم.' }}</label>
                         @error('consent')<small class="field-error">{{ $message }}</small>@enderror
                     </form>
                 </div>

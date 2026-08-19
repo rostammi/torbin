@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Psr\Http\Message\StreamInterface;
 use RuntimeException;
+use Symfony\Component\Process\Process;
 
 class TourImageCrawler
 {
@@ -22,10 +23,14 @@ class TourImageCrawler
         }
 
         $query = $this->searchQuery($tour);
-        $candidates = $this->search($query);
+        $searchResults = $this->search($query);
+        $candidates = collect($searchResults)->filter(fn (array $candidate) => $this->acceptableDimensions($candidate['width'], $candidate['height']))->values()->all();
+        $fallbackCandidates = collect($searchResults);
         $fallbackQuery = $this->fallbackSearchQuery($tour);
         if ($candidates === [] && $fallbackQuery && $fallbackQuery !== $query) {
-            $candidates = $this->search($fallbackQuery);
+            $fallbackResults = $this->search($fallbackQuery);
+            $candidates = collect($fallbackResults)->filter(fn (array $candidate) => $this->acceptableDimensions($candidate['width'], $candidate['height']))->values()->all();
+            $fallbackCandidates = $fallbackCandidates->concat($fallbackResults);
         }
         $images = [];
         $limit ??= (int) config('crawler.images.count', 4);
@@ -42,6 +47,24 @@ class TourImageCrawler
             $image = $this->download($tour, $candidate);
             if ($image !== null) {
                 $images[] = $image;
+            }
+        }
+
+        if ($images === []) {
+            $largestCandidates = $fallbackCandidates
+                ->unique('url')
+                ->sortByDesc(fn (array $candidate) => $candidate['width'] * $candidate['height']);
+
+            foreach ($largestCandidates as $candidate) {
+                if ($append && $this->sourceAlreadyExists($tour, $candidate)) {
+                    continue;
+                }
+
+                $image = $this->download($tour, $candidate, transformUndersized: true);
+                if ($image !== null) {
+                    $images[] = $image;
+                    break;
+                }
             }
         }
 
@@ -127,20 +150,39 @@ class TourImageCrawler
 
     private function fallbackSearchQuery(Tour $tour): ?string
     {
+        $title = str($tour->title)->lower()->toString();
+        $semanticQuery = match (true) {
+            $tour->category === 'stay' && str_contains($title, 'کلبه') => 'wooden cabin forest',
+            $tour->category === 'stay' && str_contains($title, 'بوم') => 'traditional ecolodge Iran',
+            $tour->category === 'stay' && str_contains($title, 'ویلا') => 'holiday villa landscape',
+            default => null,
+        };
+        if ($semanticQuery !== null) {
+            return $semanticQuery;
+        }
+
         $destination = TourSuggestion::query()
             ->where('tour_id', $tour->id)
             ->whereNotNull('destination')
             ->value('destination');
 
-        if (! $destination) {
-            return null;
+        if ($destination) {
+            $aliasedDestination = (string) data_get(
+                config('crawler.images.aliases', []),
+                trim($destination),
+                trim($destination),
+            );
+            if ($aliasedDestination !== trim($destination) || preg_match('/[a-z]/i', $aliasedDestination)) {
+                return $aliasedDestination;
+            }
         }
 
-        return (string) data_get(
-            config('crawler.images.aliases', []),
-            trim($destination),
-            trim($destination),
-        );
+        return match ($tour->category) {
+            'stay' => 'traditional accommodation Iran',
+            'hotel' => 'hotel travel architecture',
+            'visa' => 'passport visa travel',
+            default => 'Iran travel landscape',
+        };
     }
 
     private function search(string $query): array
@@ -176,13 +218,13 @@ class TourImageCrawler
                     'license_url' => $this->metadata($info, 'LicenseUrl'),
                 ];
             })
-            ->filter(fn (array $candidate) => $this->acceptableMetadata($candidate))
+            ->filter(fn (array $candidate) => $this->acceptableImageMetadata($candidate))
             ->unique('url')
             ->values()
             ->all();
     }
 
-    private function download(Tour $tour, array $candidate): ?array
+    private function download(Tour $tour, array $candidate, bool $transformUndersized = false): ?array
     {
         if (! $this->isAllowedImageUrl($candidate['url'])) {
             return null;
@@ -196,8 +238,24 @@ class TourImageCrawler
             }
 
             $size = @getimagesizefromstring($body);
-            if (! is_array($size) || ! $this->acceptableDimensions((int) $size[0], (int) $size[1])) {
+            if (! is_array($size)) {
                 return null;
+            }
+
+            $originalWidth = (int) $size[0];
+            $originalHeight = (int) $size[1];
+            $transformed = false;
+            if (! $this->acceptableDimensions($originalWidth, $originalHeight)) {
+                if (! $transformUndersized) {
+                    return null;
+                }
+
+                $body = $this->scaleAndCrop($body);
+                $size = $body === null ? false : @getimagesizefromstring($body);
+                if (! is_array($size) || ! $this->acceptableDimensions((int) $size[0], (int) $size[1])) {
+                    return null;
+                }
+                $transformed = true;
             }
 
             $extension = match ((int) ($size[2] ?? 0)) {
@@ -223,16 +281,99 @@ class TourImageCrawler
                 'license_url' => $candidate['license_url'],
                 'width' => (int) $size[0],
                 'height' => (int) $size[1],
+                'upscaled' => $transformed,
+                'original_width' => $originalWidth,
+                'original_height' => $originalHeight,
             ];
         } catch (\Throwable) {
             return null;
         }
     }
 
-    private function acceptableMetadata(array $candidate): bool
+    private function acceptableImageMetadata(array $candidate): bool
     {
         return in_array($candidate['mime'], ['image/jpeg', 'image/png', 'image/webp'], true)
-            && $this->acceptableDimensions($candidate['width'], $candidate['height']);
+            && $this->isAllowedImageUrl($candidate['url']);
+    }
+
+    private function scaleAndCrop(string $body): ?string
+    {
+        $targetHeight = (int) config('crawler.images.min_height', 720);
+        $targetWidth = max(
+            (int) config('crawler.images.min_width', 1280),
+            (int) ceil($targetHeight * (float) config('crawler.images.min_aspect_ratio', 1.2)),
+        );
+
+        if (function_exists('imagecreatefromstring')) {
+            return $this->scaleAndCropWithGd($body, $targetWidth, $targetHeight);
+        }
+
+        return $this->scaleAndCropWithFfmpeg($body, $targetWidth, $targetHeight);
+    }
+
+    private function scaleAndCropWithGd(string $body, int $targetWidth, int $targetHeight): ?string
+    {
+        $source = @imagecreatefromstring($body);
+        if ($source === false) {
+            return null;
+        }
+
+        $sourceWidth = imagesx($source);
+        $sourceHeight = imagesy($source);
+        $targetRatio = $targetWidth / $targetHeight;
+        $sourceRatio = $sourceWidth / $sourceHeight;
+        $cropWidth = $sourceRatio > $targetRatio ? (int) round($sourceHeight * $targetRatio) : $sourceWidth;
+        $cropHeight = $sourceRatio > $targetRatio ? $sourceHeight : (int) round($sourceWidth / $targetRatio);
+        $sourceX = (int) floor(($sourceWidth - $cropWidth) / 2);
+        $sourceY = (int) floor(($sourceHeight - $cropHeight) / 2);
+        $target = imagecreatetruecolor($targetWidth, $targetHeight);
+
+        try {
+            if (! imagecopyresampled($target, $source, 0, 0, $sourceX, $sourceY, $targetWidth, $targetHeight, $cropWidth, $cropHeight)) {
+                return null;
+            }
+
+            ob_start();
+            imagejpeg($target, null, 88);
+
+            return ob_get_clean() ?: null;
+        } finally {
+            imagedestroy($source);
+            imagedestroy($target);
+        }
+    }
+
+    private function scaleAndCropWithFfmpeg(string $body, int $targetWidth, int $targetHeight): ?string
+    {
+        $input = tempnam(sys_get_temp_dir(), 'geyt-image-');
+        if ($input === false) {
+            return null;
+        }
+        $output = $input.'.jpg';
+
+        try {
+            if (file_put_contents($input, $body) === false) {
+                return null;
+            }
+
+            $process = new Process([
+                (string) config('crawler.images.ffmpeg_binary', 'ffmpeg'),
+                '-hide_banner', '-loglevel', 'error', '-y', '-i', $input,
+                '-vf', "scale={$targetWidth}:{$targetHeight}:force_original_aspect_ratio=increase,crop={$targetWidth}:{$targetHeight}",
+                '-frames:v', '1', '-q:v', '3', $output,
+            ]);
+            $process->setTimeout(30)->run();
+            if (! $process->isSuccessful() || ! is_file($output)) {
+                return null;
+            }
+
+            $transformed = file_get_contents($output);
+
+            return $transformed === false ? null : $transformed;
+        } finally {
+            @unlink($input);
+            @unlink($output);
+        }
     }
 
     private function acceptableDimensions(int $width, int $height): bool

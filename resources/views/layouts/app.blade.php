@@ -22,27 +22,59 @@
                 </form>
                 <div id="search-suggestions" class="search-suggestions" role="listbox" hidden></div>
             </div>
-            <nav>
-                <a href="{{ route('tours.index') }}">تورها</a>
-                <a href="{{ route('hotels.index') }}">هتل‌ها</a>
-                <a href="{{ route('stays.index') }}">اقامتگاه‌ها</a>
-                <a href="{{ route('visas.index') }}">ویزا</a>
+            <nav @class(['admin-nav' => auth()->check() && auth()->user()->isAdmin()])>
                 @auth
-                    <a href="{{ route('admin.dashboard') }}">داشبورد</a>
                     @if(auth()->user()->isAdmin())
-                        <a href="{{ route('admin.tours.index') }}">صفحات مقایسه</a>
-                        <a href="{{ route('admin.suggestions.index') }}">پیشنهادها</a>
-                        <a href="{{ route('admin.comparison-sources.index') }}">مدیریت منابع</a>
-                        <a href="{{ route('admin.sync.index') }}">همگام‌سازی</a>
-                        <a href="{{ route('admin.agencies.index') }}">آژانس‌ها و اعتبار</a>
-                        <a href="{{ route('admin.advertisements.index') }}">تبلیغات</a>
-                        <a href="{{ route('admin.static-pages.index') }}">صفحات ثابت</a>
+                        <a class="nav-primary-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">داشبورد</a>
+                        <details class="nav-menu {{ request()->routeIs('home', 'tours.*', 'hotels.*', 'stays.*', 'visas.*') ? 'active' : '' }}">
+                            <summary>مشاهده سایت</summary>
+                            <div class="nav-dropdown">
+                                <a class="{{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">صفحه اصلی</a>
+                                <a class="{{ request()->routeIs('tours.*') ? 'active' : '' }}" href="{{ route('tours.index') }}">تورها</a>
+                                <a class="{{ request()->routeIs('hotels.*') ? 'active' : '' }}" href="{{ route('hotels.index') }}">هتل‌ها</a>
+                                <a class="{{ request()->routeIs('stays.*') ? 'active' : '' }}" href="{{ route('stays.index') }}">اقامتگاه‌ها</a>
+                                <a class="{{ request()->routeIs('visas.*') ? 'active' : '' }}" href="{{ route('visas.index') }}">ویزاها</a>
+                            </div>
+                        </details>
+                        <details class="nav-menu {{ request()->routeIs('admin.tours.*', 'admin.comparison-sources.*', 'admin.agencies.*') ? 'active' : '' }}">
+                            <summary>مدیریت مقایسه</summary>
+                            <div class="nav-dropdown">
+                                <a class="{{ request()->routeIs('admin.tours.*') ? 'active' : '' }}" href="{{ route('admin.tours.index') }}">صفحات مقایسه</a>
+                                <a class="{{ request()->routeIs('admin.comparison-sources.*') ? 'active' : '' }}" href="{{ route('admin.comparison-sources.index') }}">منابع و کراولرها</a>
+                                <a class="{{ request()->routeIs('admin.agencies.*') ? 'active' : '' }}" href="{{ route('admin.agencies.index') }}">آژانس‌ها، اعتبار و تماس</a>
+                            </div>
+                        </details>
+                        <details class="nav-menu {{ request()->routeIs('admin.suggestions.*', 'admin.sync.*', 'admin.contact-requests.*') ? 'active' : '' }}">
+                            <summary>عملیات و پیگیری</summary>
+                            <div class="nav-dropdown">
+                                <a class="{{ request()->routeIs('admin.suggestions.*') ? 'active' : '' }}" href="{{ route('admin.suggestions.index') }}">پیشنهادهای صفحات</a>
+                                <a class="{{ request()->routeIs('admin.sync.*') ? 'active' : '' }}" href="{{ route('admin.sync.index') }}">مرکز همگام‌سازی</a>
+                                <a class="{{ request()->routeIs('admin.contact-requests.*') ? 'active' : '' }}" href="{{ route('admin.contact-requests.index') }}">شماره‌ها و درخواست‌های تماس</a>
+                            </div>
+                        </details>
+                        <details class="nav-menu {{ request()->routeIs('admin.advertisements.*', 'admin.static-pages.*') ? 'active' : '' }}">
+                            <summary>محتوا و درآمد</summary>
+                            <div class="nav-dropdown">
+                                <a class="{{ request()->routeIs('admin.advertisements.*') ? 'active' : '' }}" href="{{ route('admin.advertisements.index') }}">تبلیغات</a>
+                                <a class="{{ request()->routeIs('admin.static-pages.*') ? 'active' : '' }}" href="{{ route('admin.static-pages.index') }}">صفحات ثابت</a>
+                            </div>
+                        </details>
+                    @else
+                        <a href="{{ route('tours.index') }}">تورها</a>
+                        <a href="{{ route('hotels.index') }}">هتل‌ها</a>
+                        <a href="{{ route('stays.index') }}">اقامتگاه‌ها</a>
+                        <a href="{{ route('visas.index') }}">ویزا</a>
+                        <a href="{{ route('admin.dashboard') }}">داشبورد</a>
                     @endif
                     <form action="{{ route('logout') }}" method="post" class="inline-form">
                         @csrf
                         <button class="link-button" type="submit">خروج</button>
                     </form>
                 @else
+                    <a href="{{ route('tours.index') }}">تورها</a>
+                    <a href="{{ route('hotels.index') }}">هتل‌ها</a>
+                    <a href="{{ route('stays.index') }}">اقامتگاه‌ها</a>
+                    <a href="{{ route('visas.index') }}">ویزا</a>
                     <a href="{{ route('login') }}">ورود مدیر</a>
                 @endauth
             </nav>
@@ -157,6 +189,23 @@
 
             input.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
             document.addEventListener('click', event => { if (!box.contains(event.target)) close(); });
+        })();
+    </script>
+    <script>
+        (() => {
+            const menus = [...document.querySelectorAll('.nav-menu')];
+            if (!menus.length) return;
+
+            menus.forEach(menu => menu.addEventListener('toggle', () => {
+                if (!menu.open) return;
+                menus.forEach(other => { if (other !== menu) other.open = false; });
+            }));
+            document.addEventListener('click', event => {
+                if (!event.target.closest('.nav-menu')) menus.forEach(menu => { menu.open = false; });
+            });
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape') menus.forEach(menu => { menu.open = false; });
+            });
         })();
     </script>
     @stack('scripts')

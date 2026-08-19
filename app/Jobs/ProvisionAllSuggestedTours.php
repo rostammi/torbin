@@ -25,16 +25,21 @@ class ProvisionAllSuggestedTours implements ShouldQueue
         public string $sourcePattern = '%_catalog',
         public bool $pendingOnly = false,
         public bool $referenceOnly = false,
+        public array $targetSuggestionIds = [],
     ) {}
 
     public function handle(TourProvisioner $provisioner): void
     {
         $run = SyncRun::findOrFail($this->runId);
+        if ($run->status === 'cancelled') {
+            return;
+        }
         $query = TourSuggestion::query()
             ->where('source', 'like', $this->sourcePattern)
             ->when($this->referenceOnly, fn ($query) => $query->whereNotNull('metadata->geyt_references'))
             ->when($this->pendingOnly, fn ($query) => $query->whereIn('status', ['pending', 'failed']))
             ->when($this->category, fn ($query) => $query->where('category', $this->category))
+            ->when($this->targetSuggestionIds, fn ($query) => $query->whereKey($this->targetSuggestionIds))
             ->orderBy('id');
 
         $run->update([
@@ -46,6 +51,7 @@ class ProvisionAllSuggestedTours implements ShouldQueue
         ]);
 
         $summary = [
+            'category' => $this->category,
             'created' => 0,
             'updated' => 0,
             'sources' => 0,
@@ -56,10 +62,14 @@ class ProvisionAllSuggestedTours implements ShouldQueue
             'contents_crawled' => 0,
             'images_downloaded' => 0,
             'failures' => [],
+            'failed_suggestion_ids' => [],
         ];
 
         try {
             foreach ($query->cursor() as $suggestion) {
+                if ($run->fresh()->status === 'cancelled') {
+                    return;
+                }
                 try {
                     $result = $provisioner->provision($suggestion);
                     $summary[$result['created'] ? 'created' : 'updated']++;
@@ -74,6 +84,7 @@ class ProvisionAllSuggestedTours implements ShouldQueue
                 } catch (Throwable $exception) {
                     $suggestion->update(['status' => 'failed']);
                     $run->increment('failed');
+                    $summary['failed_suggestion_ids'][] = $suggestion->id;
 
                     if (count($summary['failures']) < 25) {
                         $summary['failures'][] = [
@@ -88,6 +99,9 @@ class ProvisionAllSuggestedTours implements ShouldQueue
             }
 
             $run->refresh();
+            if ($run->status === 'cancelled') {
+                return;
+            }
             $run->update([
                 'status' => $run->failed > 0 ? 'partial' : 'success',
                 'details' => $summary,
@@ -95,6 +109,9 @@ class ProvisionAllSuggestedTours implements ShouldQueue
                 'finished_at' => now(),
             ]);
         } catch (Throwable $exception) {
+            if ($run->fresh()->status === 'cancelled') {
+                return;
+            }
             $run->refresh()->update([
                 'status' => 'failed',
                 'details' => $summary,
