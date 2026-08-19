@@ -120,10 +120,11 @@ class SyncController extends Controller
             'provision_all_tours' => ProvisionAllSuggestedTours::dispatch(
                 $newRun->id,
                 data_get($details, 'category'),
-                '%_catalog',
+                array_key_exists('source_pattern', $details) ? $details['source_pattern'] : '%_catalog',
                 $failedOnly,
                 false,
                 $failedOnly ? data_get($details, 'failed_suggestion_ids', []) : [],
+                data_get($details, 'mode'),
             ),
             'provision_tour' => ProvisionSuggestedTour::dispatch((int) data_get($details, 'suggestion_id'), $newRun->id),
             'scan_comparison_source' => ScanComparisonSource::dispatch((int) data_get($details, 'source_id'), $newRun->id),

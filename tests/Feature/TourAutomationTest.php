@@ -67,7 +67,8 @@ class TourAutomationTest extends TestCase
             ->assertSee('اقامتگاه‌ها')
             ->assertSee('ویزاها')
             ->assertSee('6 کلیدواژه در یک صفحه مقصد')
-            ->assertSee('ساخت/به‌روزرسانی همه')
+            ->assertSee('ساخت همه')
+            ->assertSee('به‌روزرسانی همه')
             ->assertSee('قبلی')
             ->assertSee('بعدی')
             ->assertDontSee('pagination.previous')
@@ -129,7 +130,7 @@ class TourAutomationTest extends TestCase
         $this->assertSame(1, $run->details['images_downloaded']);
     }
 
-    public function test_build_all_creates_new_tours_and_only_updates_existing_tours(): void
+    public function test_bulk_create_and_update_are_separate_and_include_managed_sources(): void
     {
         Storage::fake('public');
         $this->configureImageCrawlerForTests();
@@ -169,27 +170,41 @@ class TourAutomationTest extends TestCase
             'suggested_title' => 'تور استانبول | مقایسه قیمت',
             'destination' => 'استانبول',
             'trend_score' => 88,
-            'source' => 'destination_catalog',
+            'source' => 'managed_source',
             'status' => 'pending',
             'metadata' => ['region' => 'foreign'],
         ]);
 
         $this->actingAs(User::factory()->create())
-            ->post(route('admin.suggestions.store-all'))
+            ->post(route('admin.suggestions.store-all'), ['category' => 'tour', 'mode' => 'create'])
             ->assertRedirect()
             ->assertSessionHas('success');
 
-        $run = SyncRun::where('type', 'provision_all_tours')->sole();
-        $this->assertSame('success', $run->status, json_encode($run->details, JSON_UNESCAPED_UNICODE));
-        $this->assertSame(2, $run->total);
-        $this->assertSame(2, $run->successful);
-        $this->assertSame(1, $run->details['created']);
-        $this->assertSame(1, $run->details['updated']);
-        $this->assertSame(2, $run->details['images_downloaded']);
+        $createRun = SyncRun::where('type', 'provision_all_tours')->sole();
+        $this->assertSame('success', $createRun->status, json_encode($createRun->details, JSON_UNESCAPED_UNICODE));
+        $this->assertSame(1, $createRun->total);
+        $this->assertSame(1, $createRun->successful);
+        $this->assertSame('create', $createRun->details['mode']);
+        $this->assertNull($createRun->details['source_pattern']);
+        $this->assertSame(1, $createRun->details['created']);
+        $this->assertSame(0, $createRun->details['updated']);
         $this->assertSame(2, Tour::count());
         $this->assertSame($existingTour->id, $existingSuggestion->fresh()->tour_id);
         $this->assertSame('عنوان ویرایش‌شده تور موجود', $existingTour->fresh()->title);
         $this->assertNotNull($newSuggestion->fresh()->tour_id);
+        $this->assertSame(0, $existingTour->priceSources()->count());
+
+        $this->post(route('admin.suggestions.store-all'), ['category' => 'tour', 'mode' => 'update'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $updateRun = SyncRun::where('type', 'provision_all_tours')->latest('id')->firstOrFail();
+        $this->assertSame('success', $updateRun->status, json_encode($updateRun->details, JSON_UNESCAPED_UNICODE));
+        $this->assertSame(2, $updateRun->total);
+        $this->assertSame(2, $updateRun->successful);
+        $this->assertSame('update', $updateRun->details['mode']);
+        $this->assertSame(0, $updateRun->details['created']);
+        $this->assertSame(2, $updateRun->details['updated']);
 
         foreach ([$existingSuggestion->fresh()->tour, $newSuggestion->fresh()->tour] as $tour) {
             $this->assertSame(4, $tour->priceSources()->count());
@@ -227,6 +242,81 @@ class TourAutomationTest extends TestCase
 
         Queue::assertNotPushed(ProvisionAllSuggestedTours::class);
         $this->assertSame(1, SyncRun::where('type', 'provision_all_tours')->count());
+    }
+
+    public function test_bulk_create_selects_every_non_created_status_from_every_source(): void
+    {
+        Queue::fake();
+        foreach (['pending', 'failed', 'processing', 'created'] as $index => $status) {
+            TourSuggestion::create([
+                'category' => 'hotel',
+                'keyword' => "هتل آزمایشی {$index}",
+                'suggested_title' => "هتل آزمایشی {$index} | مقایسه قیمت",
+                'destination' => "مقصد {$index}",
+                'source' => $index % 2 === 0 ? 'managed_source' : 'hotel_catalog',
+                'status' => $status,
+            ]);
+        }
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('admin.suggestions.store-all'), ['category' => 'hotel', 'mode' => 'create'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $run = SyncRun::where('type', 'provision_all_tours')->sole();
+        $this->assertSame(3, $run->total);
+        $this->assertSame('create', $run->details['mode']);
+        $this->assertNull($run->details['source_pattern']);
+        Queue::assertPushed(ProvisionAllSuggestedTours::class, fn (ProvisionAllSuggestedTours $job) =>
+            $job->category === 'hotel'
+            && $job->statusMode === 'create'
+            && $job->sourcePattern === null
+        );
+    }
+
+    public function test_bulk_update_selects_only_created_suggestions(): void
+    {
+        Queue::fake();
+        foreach (['pending', 'created', 'created'] as $index => $status) {
+            TourSuggestion::create([
+                'category' => 'visa',
+                'keyword' => "ویزای آزمایشی {$index}",
+                'suggested_title' => "ویزای آزمایشی {$index} | مقایسه قیمت",
+                'destination' => "کشور {$index}",
+                'source' => 'managed_source',
+                'status' => $status,
+            ]);
+        }
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('admin.suggestions.store-all'), ['category' => 'visa', 'mode' => 'update'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $run = SyncRun::where('type', 'provision_all_tours')->sole();
+        $this->assertSame(2, $run->total);
+        $this->assertSame('update', $run->details['mode']);
+        Queue::assertPushed(ProvisionAllSuggestedTours::class, fn (ProvisionAllSuggestedTours $job) =>
+            $job->category === 'visa'
+            && $job->statusMode === 'update'
+            && $job->sourcePattern === null
+        );
+    }
+
+    public function test_bulk_job_can_be_serialized_when_all_sources_are_selected(): void
+    {
+        $job = new ProvisionAllSuggestedTours(10, 'hotel', null, false, false, [], 'create');
+        $restored = unserialize(serialize($job));
+
+        $this->assertInstanceOf(ProvisionAllSuggestedTours::class, $restored);
+        $this->assertNull($restored->sourcePattern);
+        $this->assertSame('create', $restored->statusMode);
+        $this->assertGreaterThan($restored->timeout, config('queue.connections.database.retry_after'));
+    }
+
+    public function test_public_storage_urls_are_host_independent(): void
+    {
+        $this->assertSame('/storage/tours/example.jpg', Storage::disk('public')->url('tours/example.jpg'));
     }
 
     private function configureImageCrawlerForTests(): void

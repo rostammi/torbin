@@ -22,10 +22,11 @@ class ProvisionAllSuggestedTours implements ShouldQueue
     public function __construct(
         public int $runId,
         public ?string $category = null,
-        public string $sourcePattern = '%_catalog',
+        public ?string $sourcePattern = '%_catalog',
         public bool $pendingOnly = false,
         public bool $referenceOnly = false,
         public array $targetSuggestionIds = [],
+        public ?string $statusMode = null,
     ) {}
 
     public function handle(TourProvisioner $provisioner): void
@@ -35,9 +36,13 @@ class ProvisionAllSuggestedTours implements ShouldQueue
             return;
         }
         $query = TourSuggestion::query()
-            ->where('source', 'like', $this->sourcePattern)
+            ->when($this->sourcePattern, fn ($query) => $query->where('source', 'like', $this->sourcePattern))
             ->when($this->referenceOnly, fn ($query) => $query->whereNotNull('metadata->geyt_references'))
             ->when($this->pendingOnly, fn ($query) => $query->whereIn('status', ['pending', 'failed']))
+            ->when(! $this->targetSuggestionIds && $this->statusMode === 'create', fn ($query) => $query->where(
+                fn ($query) => $query->where('status', '!=', 'created')->orWhereNull('status')
+            ))
+            ->when(! $this->targetSuggestionIds && $this->statusMode === 'update', fn ($query) => $query->where('status', 'created'))
             ->when($this->category, fn ($query) => $query->where('category', $this->category))
             ->when($this->targetSuggestionIds, fn ($query) => $query->whereKey($this->targetSuggestionIds))
             ->orderBy('id');
@@ -52,6 +57,8 @@ class ProvisionAllSuggestedTours implements ShouldQueue
 
         $summary = [
             'category' => $this->category,
+            'mode' => $this->statusMode,
+            'source_pattern' => $this->sourcePattern,
             'created' => 0,
             'updated' => 0,
             'sources' => 0,

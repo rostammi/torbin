@@ -39,9 +39,20 @@ class TourSuggestionController extends Controller
             ->selectRaw('category, count(*) as total')
             ->groupBy('category')
             ->pluck('total', 'category');
+        $buildableCount = TourSuggestion::query()
+            ->where('category', $category)
+            ->where(fn ($query) => $query->where('status', '!=', 'created')->orWhereNull('status'))
+            ->count();
+        $updatableCount = TourSuggestion::query()
+            ->where('category', $category)
+            ->where('status', 'created')
+            ->count();
         $bulkRun = SyncRun::query()->where('type', 'provision_all_tours')->latest()->first();
 
-        return view('admin.suggestions.index', compact('suggestions', 'status', 'region', 'category', 'regionCounts', 'categoryCounts', 'bulkRun'));
+        return view('admin.suggestions.index', compact(
+            'suggestions', 'status', 'region', 'category', 'regionCounts', 'categoryCounts',
+            'buildableCount', 'updatableCount', 'bulkRun'
+        ));
     }
 
     public function discover(ComparisonCatalogDiscovery $discovery): RedirectResponse
@@ -95,6 +106,7 @@ class TourSuggestionController extends Controller
         $category = array_key_exists($request->string('category')->toString(), config('comparison.categories'))
             ? $request->string('category')->toString()
             : null;
+        $mode = $request->string('mode')->toString() === 'update' ? 'update' : 'create';
         $running = SyncRun::query()
             ->where('type', 'provision_all_tours')
             ->where('status', 'running')
@@ -103,29 +115,36 @@ class TourSuggestionController extends Controller
             ->first();
 
         if ($running) {
-            return back()->with('error', 'ساخت و به‌روزرسانی همه تورها از قبل در حال اجراست.');
+            return back()->with('error', 'یک عملیات گروهی ساخت یا به‌روزرسانی از قبل در حال اجراست.');
         }
 
         $total = TourSuggestion::query()
-            ->where('source', 'like', '%_catalog')
             ->when($category, fn ($query) => $query->where('category', $category))
+            ->when($mode === 'create', fn ($query) => $query->where(
+                fn ($query) => $query->where('status', '!=', 'created')->orWhereNull('status')
+            ))
+            ->when($mode === 'update', fn ($query) => $query->where('status', 'created'))
             ->count();
         if ($total === 0) {
-            return back()->with('error', 'ابتدا پیشنهادهای مقصد را دریافت کنید.');
+            return back()->with('error', $mode === 'create'
+                ? 'پیشنهاد ساخته‌نشده‌ای در این دسته وجود ندارد.'
+                : 'صفحه ساخته‌شده‌ای در این دسته وجود ندارد.');
         }
 
         $run = SyncRun::create([
             'user_id' => auth()->id(),
             'type' => 'provision_all_tours',
             'total' => $total,
-            'details' => ['category' => $category],
+            'details' => ['category' => $category, 'mode' => $mode, 'source_pattern' => null],
             'started_at' => now(),
         ]);
 
         try {
-            ProvisionAllSuggestedTours::dispatch($run->id, $category);
+            ProvisionAllSuggestedTours::dispatch($run->id, $category, null, false, false, [], $mode);
 
-            return back()->with('success', "جاب تکمیل {$total} صفحه مقایسه همراه با قیمت، محتوا و تصاویر در صف قرار گرفت؛ تورهای موجود فقط به‌روزرسانی می‌شوند.");
+            return back()->with('success', $mode === 'create'
+                ? "ساخت {$total} پیشنهاد ساخته‌نشده در صف قرار گرفت."
+                : "به‌روزرسانی {$total} صفحه ساخته‌شده در صف قرار گرفت.");
         } catch (Throwable $exception) {
             $run->update([
                 'status' => 'failed',
@@ -134,7 +153,9 @@ class TourSuggestionController extends Controller
             ]);
             report($exception);
 
-            return back()->with('error', 'شروع جاب ساخت همه تورها ناموفق بود: '.$exception->getMessage());
+            return back()->with('error', ($mode === 'create'
+                ? 'شروع ساخت پیشنهادها ناموفق بود: '
+                : 'شروع به‌روزرسانی صفحات ناموفق بود: ').$exception->getMessage());
         }
     }
 }

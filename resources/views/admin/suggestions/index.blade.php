@@ -8,16 +8,24 @@
             <div><span class="eyebrow">اتوماسیون محتوا</span><h1>پیشنهادهای صفحات مقایسه</h1><p class="muted">کاتالوگ کنترل‌شده تور، هتل، اقامتگاه و خدمات ویزا</p></div>
             <div class="heading-actions">
                 <form method="post" action="{{ route('admin.suggestions.discover') }}">@csrf<button class="button button-secondary">↻ دریافت پیشنهادهای تازه</button></form>
-                <form method="post" action="{{ route('admin.suggestions.store-all') }}" onsubmit="if (!confirm('همه پیشنهادهای این دسته ساخته یا به‌روزرسانی شوند؟')) return false; this.querySelector('button').disabled=true; this.querySelector('button').textContent='در حال شروع جاب…'">
-                    @csrf <input type="hidden" name="category" value="{{ $category }}">
-                    <button class="button button-featured" @disabled($bulkRun?->status === 'running' && ! $bulkRun?->finished_at)>ساخت/به‌روزرسانی همه</button>
+                <form method="post" action="{{ route('admin.suggestions.store-all') }}" onsubmit="if (!confirm('همه پیشنهادهای ساخته‌نشده این دسته ساخته شوند؟')) return false; this.querySelector('button').disabled=true; this.querySelector('button').textContent='در حال شروع ساخت…'">
+                    @csrf
+                    <input type="hidden" name="category" value="{{ $category }}">
+                    <input type="hidden" name="mode" value="create">
+                    <button class="button button-featured" @disabled($buildableCount === 0 || ($bulkRun?->status === 'running' && ! $bulkRun?->finished_at))>ساخت همه ({{ number_format($buildableCount) }})</button>
+                </form>
+                <form method="post" action="{{ route('admin.suggestions.store-all') }}" onsubmit="if (!confirm('همه صفحات ساخته‌شده این دسته به‌روزرسانی شوند؟')) return false; this.querySelector('button').disabled=true; this.querySelector('button').textContent='در حال شروع به‌روزرسانی…'">
+                    @csrf
+                    <input type="hidden" name="category" value="{{ $category }}">
+                    <input type="hidden" name="mode" value="update">
+                    <button class="button button-secondary" @disabled($updatableCount === 0 || ($bulkRun?->status === 'running' && ! $bulkRun?->finished_at))>به‌روزرسانی همه ({{ number_format($updatableCount) }})</button>
                 </form>
             </div>
         </div>
 
         @if ($bulkRun?->status === 'running' && ! $bulkRun?->finished_at)
             <div class="panel bulk-job-status">
-                <div><strong>جاب ساخت و به‌روزرسانی در حال اجراست</strong><small>{{ number_format($bulkRun->successful + $bulkRun->failed) }} از {{ number_format($bulkRun->total) }} پیشنهاد پردازش شده</small></div>
+                <div><strong>{{ data_get($bulkRun->details, 'mode') === 'update' ? 'به‌روزرسانی صفحات' : 'ساخت پیشنهادها' }} در حال اجراست</strong><small>{{ number_format($bulkRun->successful + $bulkRun->failed) }} از {{ number_format($bulkRun->total) }} پیشنهاد پردازش شده</small></div>
                 <a href="{{ route('admin.sync.index') }}">مشاهده گزارش اجرا</a>
             </div>
         @endif
