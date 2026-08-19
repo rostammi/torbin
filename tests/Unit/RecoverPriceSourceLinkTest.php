@@ -38,7 +38,7 @@ class RecoverPriceSourceLinkTest extends TestCase
         $crawler = Mockery::mock(PriceCrawler::class);
         $crawler->shouldReceive('crawl')
             ->once()
-            ->with(Mockery::on(fn ($argument) => $argument->is($source)), false)
+            ->with(Mockery::on(fn ($argument) => $argument->is($source)), true)
             ->andReturnUsing(function ($argument) {
                 $argument->update([
                     'buy_url' => 'https://93.184.216.34/new-offer',

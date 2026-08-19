@@ -13,6 +13,19 @@
             <div class="validation-errors"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
         @endif
 
+        <form class="panel admin-form comparison-contact-settings" method="post" action="{{ route('admin.agencies.comparison-contact') }}">
+            @csrf @method('PUT')
+            <div>
+                <span class="eyebrow">پیشنهاد بدون قیمت</span>
+                <h2>شماره تماس صفحات مقایسه</h2>
+                <p class="muted">این شماره حداکثر یک‌بار، کنار بالاترین پرووایدر بدون قیمت نمایش داده می‌شود.</p>
+            </div>
+            <label>شماره تماس
+                <input name="comparison_contact_phone" dir="ltr" value="{{ old('comparison_contact_phone', $comparisonContactPhone) }}" required maxlength="30">
+            </label>
+            <button class="button" type="submit">ذخیره شماره تماس</button>
+        </form>
+
         <div class="agency-grid">
             @forelse($agencies as $agency)
                 <article class="panel agency-card">
@@ -31,7 +44,8 @@
                     <form class="agency-inline-form" method="post" action="{{ route('admin.agencies.update', $agency) }}">
                         @csrf @method('PUT')
                         <label>هزینه هر کلیک (تومان)<input type="number" min="0" name="cost_per_click" value="{{ $agency->cost_per_click }}" required></label>
-                        <button class="button" type="submit">ذخیره هزینه</button>
+                        <label>اولویت تماس<input type="number" min="0" max="100000" name="contact_priority" value="{{ $agency->contact_priority }}" required><small>عدد کمتر، اولویت بالاتر</small></label>
+                        <button class="button" type="submit">ذخیره تنظیمات</button>
                     </form>
 
                     <form class="agency-balance-form" method="post" action="{{ route('admin.agencies.balance', $agency) }}">

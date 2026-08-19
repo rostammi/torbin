@@ -19,11 +19,16 @@ class SyncController extends Controller
     public function index(): View
     {
         $runs = SyncRun::with('user')->latest()->paginate(20);
+        $suggestionsByCategory = TourSuggestion::query()
+            ->where('status', 'pending')
+            ->selectRaw('category, COUNT(*) as aggregate')
+            ->groupBy('category')
+            ->pluck('aggregate', 'category');
         $stats = [
             'sources' => PriceSource::where('is_active', true)->count(),
             'stale_prices' => PriceSource::where('is_active', true)->where(fn ($q) => $q->whereNull('last_checked_at')->orWhere('last_checked_at', '<', now()->subHour()))->count(),
             'stale_content' => PriceSource::where('is_active', true)->where(fn ($q) => $q->whereNull('content_checked_at')->orWhere('content_checked_at', '<', now()->subDay()))->count(),
-            'suggestions' => TourSuggestion::where('status', 'pending')->count(),
+            'suggestions_by_category' => $suggestionsByCategory,
             'missing_images' => Tour::query()
                 ->where(fn ($query) => $query->whereNull('cover_image')->orWhere('cover_image', ''))
                 ->count(),
@@ -34,7 +39,10 @@ class SyncController extends Controller
 
     public function run(Request $request): RedirectResponse
     {
-        $data = $request->validate(['type' => ['required', Rule::in(['discover_tours', 'prices', 'content', 'images', 'all'])]]);
+        $data = $request->validate(['type' => ['required', Rule::in([
+            'discover_tours', 'discover_hotels', 'discover_stays', 'discover_visas',
+            'prices', 'content', 'images', 'all',
+        ])]]);
         if ($data['type'] === 'images' && SyncRun::query()
             ->where('type', 'images')
             ->where('status', 'running')

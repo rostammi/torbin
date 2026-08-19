@@ -2,6 +2,7 @@
 
 return [
     'source' => 'https://geyt.ir',
+    'live_discovery' => env('GEYT_REFERENCE_LIVE_DISCOVERY', true),
 
     'catalogs' => [
         'tour' => [

@@ -57,7 +57,7 @@ class OfficialCrawlersTest extends TestCase
         $this->assertSame(9_000_000, $source->fresh()->latest_price);
     }
 
-    public function test_failed_price_source_is_removed_from_its_tour(): void
+    public function test_failed_price_source_is_retained_for_contact_fallback(): void
     {
         Http::fake([
             'ws.alibaba.ir/*' => Http::response([], 503),
@@ -67,7 +67,16 @@ class OfficialCrawlersTest extends TestCase
         $sourceId = $source->id;
 
         $this->assertFalse(app(PriceCrawler::class)->crawl($source));
-        $this->assertDatabaseMissing('price_sources', ['id' => $sourceId]);
+        $this->assertDatabaseHas('price_sources', [
+            'id' => $sourceId,
+            'is_active' => true,
+            'last_status' => 'failed',
+            'latest_price' => null,
+        ]);
+        $this->get($source->tour->publicUrl())
+            ->assertOk()
+            ->assertSee($source->provider_name)
+            ->assertSee('تماس بگیرید');
     }
 
     public function test_safarmarket_combines_both_apis_and_normalizes_their_units(): void

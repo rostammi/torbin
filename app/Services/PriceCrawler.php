@@ -31,7 +31,7 @@ class PriceCrawler
         private readonly TourContentCompiler $contentCompiler,
     ) {}
 
-    public function crawl(PriceSource $source, bool $removeOnFailure = true): bool
+    public function crawl(PriceSource $source, bool $deactivateOnFailure = false): bool
     {
         try {
             if ($source->extraction_type === 'manual') {
@@ -56,16 +56,13 @@ class PriceCrawler
             }
 
             $tour = $source->tour;
-            if ($removeOnFailure) {
-                $source->delete();
-            } else {
-                $source->update([
-                    'is_active' => false,
-                    'last_status' => 'recovery_failed',
-                    'last_error' => mb_substr($exception->getMessage(), 0, 1000),
-                    'last_checked_at' => now(),
-                ]);
-            }
+            $source->update([
+                'latest_price' => null,
+                'is_active' => $deactivateOnFailure ? false : $source->is_active,
+                'last_status' => $deactivateOnFailure ? 'recovery_failed' : 'failed',
+                'last_error' => mb_substr($exception->getMessage(), 0, 1000),
+                'last_checked_at' => now(),
+            ]);
 
             try {
                 $this->contentCompiler->refresh($tour);

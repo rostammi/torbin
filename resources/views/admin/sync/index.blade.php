@@ -7,7 +7,19 @@
         <div class="section-head"><div><span class="eyebrow">عملیات دوره‌ای</span><h1>مرکز همگام‌سازی</h1><p class="muted">همه‌ی عملیات خواندن تور، قیمت، امتیاز، محتوا و تصاویر در یک صفحه</p></div></div>
 
         <div class="sync-grid">
-            <article class="panel sync-card"><span>{{ $stats['suggestions'] }} پیشنهاد آماده</span><h2>کشف تورهای محبوب</h2><p>کاتالوگ مقصدهای داخلی و خارجی را بخوان و فهرست پیشنهادها را به‌روز کن.</p><form method="post" action="{{ route('admin.sync.run') }}">@csrf<input type="hidden" name="type" value="discover_tours"><button class="button">اجرای کشف تورها</button></form></article>
+            @foreach(config('comparison.categories') as $categoryKey => $categoryConfig)
+                @php($discoveryType = ['tour' => 'discover_tours', 'hotel' => 'discover_hotels', 'stay' => 'discover_stays', 'visa' => 'discover_visas'][$categoryKey])
+                <article class="panel sync-card">
+                    <span>{{ $stats['suggestions_by_category']->get($categoryKey, 0) }} پیشنهاد آماده</span>
+                    <h2>کشف {{ $categoryConfig['plural'] }}</h2>
+                    <p>کاتالوگ داخلی و تمام صفحات مرجع geyt.ir در دسته {{ $categoryConfig['plural'] }} را بخوان و پیشنهادها را به‌روز کن.</p>
+                    <form method="post" action="{{ route('admin.sync.run') }}">
+                        @csrf
+                        <input type="hidden" name="type" value="{{ $discoveryType }}">
+                        <button class="button">اجرای کشف {{ $categoryConfig['plural'] }}</button>
+                    </form>
+                </article>
+            @endforeach
             <article class="panel sync-card"><span>{{ $stats['stale_prices'] }} منبع نیازمند بروزرسانی</span><h2>قیمت‌ها و امتیازها</h2><p>قیمت، موجودی، لینک خرید و امتیاز همه‌ی منابع فعال را دوباره بخوان.</p><form method="post" action="{{ route('admin.sync.run') }}">@csrf<input type="hidden" name="type" value="prices"><button class="button">خواندن همه قیمت‌ها</button></form></article>
             <article class="panel sync-card"><span>{{ $stats['stale_content'] }} محتوای قدیمی</span><h2>محتوای ارائه‌دهنده‌ها</h2><p>موضوعات مفید صفحات ارائه‌دهندگان را استخراج و محتوای خودکار تور را تلفیق کن.</p><form method="post" action="{{ route('admin.sync.run') }}">@csrf<input type="hidden" name="type" value="content"><button class="button">خواندن همه محتواها</button></form></article>
             <article class="panel sync-card"><span>{{ $stats['missing_images'] }} تور بدون عکس</span><h2>تصاویر تورهای بدون عکس</h2><p>تصاویر مرتبط و باکیفیت را پیدا کن، ابعادشان را بررسی کن و به کاور و گالری تور اضافه کن.</p><form method="post" action="{{ route('admin.sync.run') }}">@csrf<input type="hidden" name="type" value="images"><button class="button">دریافت تصاویر تورها</button></form></article>
@@ -21,7 +33,7 @@
                 <tbody>
                 @forelse ($runs as $run)
                     <tr>
-                        <td><strong>{{ match($run->type) {'discover_tours' => 'کشف تورها', 'import_geyt_catalog' => 'تکمیل کاتالوگ geyt.ir', 'scan_comparison_source' => 'اسکن منبع مقایسه', 'provision_tour' => 'ساخت خودکار تور', 'provision_all_tours' => 'ساخت/به‌روزرسانی همه تورها', 'prices' => 'قیمت‌ها', 'content' => 'محتواها', 'images' => 'تصاویر تورها', 'add_tour_images' => 'افزودن تصاویر یک تور', 'refresh_tour_images' => 'تعویض تصاویر یک تور', default => 'همگام‌سازی کامل'} }}</strong><small>{{ $run->user?->name ?? 'زمان‌بندی سیستم' }}</small></td>
+                        <td><strong>{{ match($run->type) {'discover_tours' => 'کشف تورها', 'discover_hotels' => 'کشف هتل‌ها', 'discover_stays' => 'کشف اقامتگاه‌ها', 'discover_visas' => 'کشف ویزاها', 'import_geyt_catalog' => 'تکمیل کاتالوگ geyt.ir', 'provision_geyt_reference' => 'ساخت صفحات مرجع geyt.ir', 'scan_comparison_source' => 'اسکن منبع مقایسه', 'provision_tour' => 'ساخت خودکار تور', 'provision_all_tours' => 'ساخت/به‌روزرسانی همه تورها', 'prices' => 'قیمت‌ها', 'content' => 'محتواها', 'images' => 'تصاویر تورها', 'add_tour_images' => 'افزودن تصاویر یک تور', 'refresh_tour_images' => 'تعویض تصاویر یک تور', default => 'همگام‌سازی کامل'} }}</strong><small>{{ $run->user?->name ?? 'زمان‌بندی سیستم' }}</small></td>
                         <td>{{ $run->started_at?->diffForHumans() }}</td>
                         <td><span class="status {{ $run->status === 'success' ? 'success' : ($run->status === 'failed' ? 'failed' : '') }}">{{ match($run->status) {'success' => 'موفق', 'partial' => 'بخشی موفق', 'failed' => 'ناموفق', default => 'در حال اجرا'} }}</span></td>
                         <td>{{ $run->successful }} / {{ $run->total }}</td>

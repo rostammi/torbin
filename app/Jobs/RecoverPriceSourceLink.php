@@ -35,7 +35,7 @@ class RecoverPriceSourceLink implements ShouldQueue
         }
 
         for ($attempt = 0; $attempt < self::CANDIDATES_PER_ATTEMPT; $attempt++) {
-            if (! $crawler->crawl($source, false)) {
+            if (! $crawler->crawl($source, true)) {
                 break;
             }
 

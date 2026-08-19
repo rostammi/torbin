@@ -89,13 +89,13 @@ class TourController extends Controller
         $target = $result['target_met']
             ? "{$result['prices_found']} قیمت معتبر پیدا شد"
             : "فقط {$result['prices_found']} قیمت پیدا شد و افزودن کراولر جدید لازم است";
-        $removed = $result['failed_sources_removed'] > 0
-            ? "؛ {$result['failed_sources_removed']} منبع خطادار حذف شد"
+        $retained = $result['failed_sources_retained'] > 0
+            ? "؛ {$result['failed_sources_retained']} منبع بدون قیمت حفظ شد"
             : '';
 
         return back()->with(
             $result['target_met'] ? 'success' : 'error',
-            "قیمت این تور از {$result['primary_checked']} سایت اصلی{$fallback} بررسی شد؛ {$target}{$removed} و {$notified} هشدار ارسال شد."
+            "قیمت این تور از {$result['primary_checked']} سایت اصلی{$fallback} بررسی شد؛ {$target}{$retained} و {$notified} هشدار ارسال شد."
         );
     }
 

@@ -6,6 +6,7 @@ use App\Models\PriceSource;
 use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Services\Discovery\ComparisonCatalogDiscovery;
+use App\Services\Discovery\GeytReferencePageProvisioner;
 use App\Services\Images\TourImageCrawler;
 use App\Services\PriceCrawler;
 use App\Services\TourPriceUpdater;
@@ -29,17 +30,32 @@ class RunAutomationSync implements ShouldQueue
         PriceCrawler $crawler,
         TourPriceUpdater $priceUpdater,
         ComparisonCatalogDiscovery $discovery,
+        GeytReferencePageProvisioner $referencePages,
         TourImageCrawler $images,
     ): void {
         $run = SyncRun::findOrFail($this->runId);
         try {
             $details = [];
             $total = $successful = 0;
-            if (in_array($run->type, ['discover_tours', 'all'], true)) {
-                $result = $discovery->discover();
+            $discoveryCategories = [
+                'discover_tours' => 'tour',
+                'discover_hotels' => 'hotel',
+                'discover_stays' => 'stay',
+                'discover_visas' => 'visa',
+            ];
+            if ($run->type === 'all' || isset($discoveryCategories[$run->type])) {
+                $result = $run->type === 'all'
+                    ? $discovery->discover()
+                    : $discovery->discoverCategory($discoveryCategories[$run->type]);
                 $details['discovery'] = $result;
+                $pageResult = $referencePages->provision(
+                    $run->type === 'all' ? null : $discoveryCategories[$run->type],
+                );
+                $details['reference_pages'] = $pageResult;
                 $total += $result['total'];
                 $successful += $result['total'];
+                $total += $pageResult['total'];
+                $successful += $pageResult['total'];
             }
             if (in_array($run->type, ['prices', 'all'], true)) {
                 $tours = Tour::query()->get();
@@ -47,7 +63,7 @@ class RunAutomationSync implements ShouldQueue
                     'tours' => $tours->count(),
                     'checked' => 0,
                     'crawl_successful' => 0,
-                    'failed_sources_removed' => 0,
+                    'failed_sources_retained' => 0,
                     'fallback_checked' => 0,
                     'with_minimum_prices' => 0,
                     'needs_new_crawler' => [],
@@ -56,7 +72,7 @@ class RunAutomationSync implements ShouldQueue
                     $result = $priceUpdater->update($tour);
                     $priceSummary['checked'] += $result['checked'];
                     $priceSummary['crawl_successful'] += $result['crawl_successful'];
-                    $priceSummary['failed_sources_removed'] += $result['failed_sources_removed'];
+                    $priceSummary['failed_sources_retained'] += $result['failed_sources_retained'];
                     $priceSummary['fallback_checked'] += $result['fallback_checked'];
                     $priceSummary['with_minimum_prices'] += (int) $result['target_met'];
                     if ($result['needs_new_crawler']) {

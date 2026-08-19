@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PriceHistory;
+use App\Models\SiteSetting;
 use App\Models\Tour;
 use App\Services\Advertising\AdvertisementManager;
 use App\Services\Analytics\TourViewTracker;
@@ -71,15 +72,13 @@ class HomeController extends Controller
 
         abort_unless($tour->is_active, 404);
         $views->track($tour, $request);
-        $tour->load(['priceSources' => fn ($query) => $query
-            ->where('is_active', true)
-            ->funded()
-            ->where('latest_price', '>', 0)
-            ->orderBy('latest_price')
-            ->with('agency')]);
+        $comparisonSources = $tour->publicComparisonSources();
+        $tour->setRelation('priceSources', $comparisonSources);
+        $comparisonContactPhone = SiteSetting::comparisonContactPhone();
+        $comparisonContactHref = SiteSetting::phoneHref($comparisonContactPhone);
 
         $historyQuery = PriceHistory::query()
-            ->whereIn('price_source_id', $tour->priceSources->pluck('id'))
+            ->whereIn('price_source_id', $comparisonSources->where('latest_price', '>', 0)->pluck('id'))
             ->where('price', '>', 0)
             ->where('is_available', true);
         $oldestTrendDay = (clone $historyQuery)
@@ -117,6 +116,13 @@ class HomeController extends Controller
         $trendTopAd = $advertisements->forPlacement('tour_trend_top')->first();
         $offersBottomAd = $advertisements->forPlacement('tour_offers_bottom')->first();
 
-        return view('tours.show', compact('tour', 'priceTrend', 'trendTopAd', 'offersBottomAd'));
+        return view('tours.show', compact(
+            'tour',
+            'priceTrend',
+            'trendTopAd',
+            'offersBottomAd',
+            'comparisonContactPhone',
+            'comparisonContactHref',
+        ));
     }
 }

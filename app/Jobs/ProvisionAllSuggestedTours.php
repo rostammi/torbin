@@ -24,6 +24,7 @@ class ProvisionAllSuggestedTours implements ShouldQueue
         public ?string $category = null,
         public string $sourcePattern = '%_catalog',
         public bool $pendingOnly = false,
+        public bool $referenceOnly = false,
     ) {}
 
     public function handle(TourProvisioner $provisioner): void
@@ -31,6 +32,7 @@ class ProvisionAllSuggestedTours implements ShouldQueue
         $run = SyncRun::findOrFail($this->runId);
         $query = TourSuggestion::query()
             ->where('source', 'like', $this->sourcePattern)
+            ->when($this->referenceOnly, fn ($query) => $query->whereNotNull('metadata->geyt_references'))
             ->when($this->pendingOnly, fn ($query) => $query->whereIn('status', ['pending', 'failed']))
             ->when($this->category, fn ($query) => $query->where('category', $this->category))
             ->orderBy('id');
@@ -50,7 +52,7 @@ class ProvisionAllSuggestedTours implements ShouldQueue
             'prices_crawled' => 0,
             'prices_found' => 0,
             'fallback_checked' => 0,
-            'failed_sources_removed' => 0,
+            'failed_sources_retained' => 0,
             'contents_crawled' => 0,
             'images_downloaded' => 0,
             'failures' => [],
@@ -65,7 +67,7 @@ class ProvisionAllSuggestedTours implements ShouldQueue
                     $summary['prices_crawled'] += $result['crawled'];
                     $summary['prices_found'] += $result['prices_found'];
                     $summary['fallback_checked'] += $result['fallback_checked'];
-                    $summary['failed_sources_removed'] += $result['failed_sources_removed'];
+                    $summary['failed_sources_retained'] += $result['failed_sources_retained'];
                     $summary['contents_crawled'] += $result['content_crawled'];
                     $summary['images_downloaded'] += $result['images_downloaded'];
                     $run->increment('successful');

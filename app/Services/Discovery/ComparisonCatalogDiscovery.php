@@ -18,7 +18,7 @@ class ComparisonCatalogDiscovery
         $total = $tourResult['total'];
 
         foreach (['hotel', 'stay', 'visa'] as $category) {
-            $results[$category] = $this->discoverCategory($category);
+            $results[$category] = $this->discoverConfiguredCategory($category);
             $total += $results[$category]['total'];
         }
 
@@ -29,7 +29,21 @@ class ComparisonCatalogDiscovery
 
     public function discoverCategory(string $category): array
     {
-        abort_unless(in_array($category, ['hotel', 'stay', 'visa'], true), 404);
+        abort_unless(in_array($category, ['tour', 'hotel', 'stay', 'visa'], true), 404);
+        $catalog = $category === 'tour'
+            ? $this->tours->discover()
+            : $this->discoverConfiguredCategory($category);
+        $reference = $this->reference->discover($category);
+
+        return [
+            'total' => $catalog['total'] + $reference['created'],
+            'catalog' => $catalog,
+            'reference' => $reference,
+        ];
+    }
+
+    private function discoverConfiguredCategory(string $category): array
+    {
         $saved = [];
 
         foreach (config("comparison.catalogs.{$category}", []) as $index => $destination) {

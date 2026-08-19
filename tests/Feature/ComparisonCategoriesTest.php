@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\RunAutomationSync;
+use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Models\TourSuggestion;
+use App\Models\User;
 use App\Services\Discovery\ComparisonCatalogDiscovery;
 use App\Services\Discovery\ProviderCatalog;
 use App\Services\TourSlugGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ComparisonCategoriesTest extends TestCase
@@ -81,6 +85,64 @@ class ComparisonCategoriesTest extends TestCase
         $this->assertDatabaseMissing('price_sources', [
             'tour_id' => $tour->id,
             'provider_name' => 'علی‌بابا',
+        ]);
+    }
+
+    public function test_sync_center_can_discover_each_category_independently(): void
+    {
+        Queue::fake();
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin)->get(route('admin.sync.index'))
+            ->assertOk()
+            ->assertSee('اجرای کشف تورها')
+            ->assertSee('اجرای کشف هتل‌ها')
+            ->assertSee('اجرای کشف اقامتگاه‌ها')
+            ->assertSee('اجرای کشف ویزاها')
+            ->assertSee('value="discover_tours"', false)
+            ->assertSee('value="discover_hotels"', false)
+            ->assertSee('value="discover_stays"', false)
+            ->assertSee('value="discover_visas"', false);
+
+        $this->post(route('admin.sync.run'), ['type' => 'discover_hotels'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $run = SyncRun::where('type', 'discover_hotels')->sole();
+        Queue::assertPushed(RunAutomationSync::class, fn (RunAutomationSync $job) => $job->runId === $run->id);
+
+        app()->call([new RunAutomationSync($run->id), 'handle']);
+
+        $this->assertSame('success', $run->fresh()->status);
+        $this->assertGreaterThan(0, TourSuggestion::where('category', 'hotel')->count());
+        $this->assertGreaterThan(0, Tour::where('category', 'hotel')->count());
+        $this->assertDatabaseHas('tour_suggestions', [
+            'category' => 'hotel',
+            'destination' => 'آمستردام',
+        ]);
+        $this->assertSame(0, TourSuggestion::where('category', 'tour')->count());
+        $this->assertSame(0, TourSuggestion::where('category', 'stay')->count());
+        $this->assertSame(0, TourSuggestion::where('category', 'visa')->count());
+        $this->assertSame(0, Tour::where('category', 'tour')->count());
+        $this->assertSame(0, Tour::where('category', 'stay')->count());
+        $this->assertSame(0, Tour::where('category', 'visa')->count());
+    }
+
+    public function test_each_category_discovery_includes_its_geyt_reference_pages(): void
+    {
+        $discovery = app(ComparisonCatalogDiscovery::class);
+
+        $discovery->discoverCategory('stay');
+        $this->assertDatabaseHas('tour_suggestions', [
+            'category' => 'stay',
+            'destination' => 'اولسبلنگاه',
+        ]);
+        $this->assertSame(0, TourSuggestion::where('category', 'visa')->count());
+
+        $discovery->discoverCategory('visa');
+        $this->assertDatabaseHas('tour_suggestions', [
+            'category' => 'visa',
+            'destination' => 'اوگاندا',
         ]);
     }
 }

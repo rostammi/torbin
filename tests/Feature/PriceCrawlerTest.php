@@ -6,9 +6,9 @@ use App\Models\PriceSource;
 use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Models\User;
+use App\Services\Crawlers\SourceUrlResolver;
 use App\Services\PriceCrawler;
 use App\Services\TourPriceUpdater;
-use App\Services\Crawlers\SourceUrlResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -112,11 +112,11 @@ class PriceCrawlerTest extends TestCase
             ->post(route('admin.tours.crawl', $tour))
             ->assertRedirect()
             ->assertSessionHas('success', fn (string $message) => str_contains($message, '10 سایت اصلی')
-                && str_contains($message, '8 منبع خطادار حذف شد'));
+                && str_contains($message, '8 منبع بدون قیمت حفظ شد'));
 
         $tour->refresh();
-        $this->assertSame(3, $tour->priceSources()->count());
-        $this->assertSame(0, $tour->priceSources()->where('last_status', 'failed')->count());
+        $this->assertSame(11, $tour->priceSources()->count());
+        $this->assertSame(8, $tour->priceSources()->where('last_status', 'failed')->count());
         $this->assertSame(3, $tour->priceSources()->where('latest_price', '>', 0)->count());
         $this->assertSame(8_450_000, $tour->priceSources()->where('provider_name', 'سفر۲۴ تست')->value('latest_price'));
     }
@@ -134,7 +134,7 @@ class PriceCrawlerTest extends TestCase
         $this->assertSame(1, $run->details['prices']['tours']);
         $this->assertSame(11, $run->details['prices']['checked']);
         $this->assertSame(1, $run->details['prices']['fallback_checked']);
-        $this->assertSame(8, $run->details['prices']['failed_sources_removed']);
+        $this->assertSame(8, $run->details['prices']['failed_sources_retained']);
         $this->assertSame(1, $run->details['prices']['with_minimum_prices']);
         $this->assertSame([], $run->details['prices']['needs_new_crawler']);
     }

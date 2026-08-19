@@ -30,7 +30,7 @@ class TourPriceUpdater
 
         $checked = 0;
         $crawlSuccessful = 0;
-        $failedSourcesRemoved = 0;
+        $failedSourcesRetained = 0;
         $pricesFound = 0;
         foreach ($primaryProviders as $provider) {
             $source = $tour->priceSources()
@@ -46,7 +46,7 @@ class TourPriceUpdater
             if ($this->crawler->crawl($source)) {
                 $crawlSuccessful++;
             } else {
-                $failedSourcesRemoved++;
+                $failedSourcesRetained++;
 
                 continue;
             }
@@ -70,7 +70,7 @@ class TourPriceUpdater
                 if ($this->crawler->crawl($source)) {
                     $crawlSuccessful++;
                 } else {
-                    $failedSourcesRemoved++;
+                    $failedSourcesRetained++;
 
                     continue;
                 }
@@ -90,7 +90,7 @@ class TourPriceUpdater
             'fallback_checked' => $fallbackChecked,
             'checked' => $checked,
             'crawl_successful' => $crawlSuccessful,
-            'failed_sources_removed' => $failedSourcesRemoved,
+            'failed_sources_retained' => $failedSourcesRetained,
             'prices_found' => $pricesFound,
             'minimum_prices' => self::MINIMUM_PRICES,
             'target_met' => $pricesFound >= self::MINIMUM_PRICES,

@@ -77,7 +77,15 @@
             <div class="comparison-title">
                 <span class="eyebrow">قیمت امروز</span>
                 <h2>مقایسه فروشنده‌ها</h2>
-                <p>{{ $tour->priceSources->count() }} پیشنهاد دارای قیمت، مرتب‌شده از ارزان‌ترین</p>
+                @php($pricedSourcesCount = $tour->priceSources->where('latest_price', '>', 0)->count())
+                @php($displayedSourcesCount = $tour->priceSources->count())
+                <p>
+                    @if($pricedSourcesCount)
+                        {{ $displayedSourcesCount }} پیشنهاد، شامل {{ $pricedSourcesCount }} قیمت آنلاین
+                    @else
+                        {{ $displayedSourcesCount }} پیشنهاد برای استعلام قیمت
+                    @endif
+                </p>
             </div>
 
             <div class="price-list">
@@ -105,16 +113,21 @@
                             </div>
                         </div>
                         <div class="price-action">
-                            <strong>{{ number_format($source->latest_price) }} <small>{{ $source->currency }}</small></strong>
-                            @if(!$source->agency || $source->agency->canAffordClick())
-                                <a href="{{ route('outbound.click', $source) }}" target="_blank" rel="nofollow sponsored noopener">مشاهده پیشنهاد ↗</a>
+                            @if($source->latest_price > 0)
+                                <strong>{{ number_format($source->latest_price) }} <small>{{ $source->currency }}</small></strong>
+                                @if(!$source->agency || $source->agency->canAffordClick())
+                                    <a href="{{ route('outbound.click', $source) }}" target="_blank" rel="nofollow sponsored noopener">مشاهده پیشنهاد ↗</a>
+                                @else
+                                    <span class="buy-disabled">اعتبار ارائه‌دهنده کافی نیست</span>
+                                @endif
                             @else
-                                <span class="buy-disabled">اعتبار ارائه‌دهنده کافی نیست</span>
+                                <button class="contact-reveal" type="button" aria-expanded="false">تماس بگیرید</button>
+                                <a class="contact-phone" dir="ltr" href="tel:{{ $comparisonContactHref }}" hidden>{{ $comparisonContactPhone }}</a>
                             @endif
                         </div>
                     </div>
                 @empty
-                    <div class="empty-state compact"><p>هنوز قیمت معتبری برای این {{ $tour->categoryLabel() }} ثبت نشده است.</p></div>
+                    <div class="empty-state compact"><p>هنوز فروشنده‌ای برای این {{ $tour->categoryLabel() }} ثبت نشده است.</p></div>
                 @endforelse
             </div>
             <p class="comparison-note">قیمت‌ها ممکن است در سایت فروشنده تغییر کنند؛ مبلغ نهایی را پیش از خرید بررسی کنید.</p>
@@ -175,3 +188,19 @@
         @include('tours._trend', ['trend' => $priceTrend])
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        document.querySelectorAll('.contact-reveal').forEach(button => {
+            button.addEventListener('click', () => {
+                const phone = button.nextElementSibling;
+                if (!phone?.classList.contains('contact-phone')) return;
+
+                phone.hidden = false;
+                button.hidden = true;
+                button.setAttribute('aria-expanded', 'true');
+                phone.focus();
+            });
+        });
+    </script>
+@endpush

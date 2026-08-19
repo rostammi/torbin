@@ -81,7 +81,7 @@ class TourProvisioner
 
         $tour->refresh();
         $sources = $tour->priceSources()->count();
-        $tour->update(['is_active' => $priceResult['target_met'] && filled($tour->cover_image)]);
+        $tour->update(['is_active' => filled($tour->cover_image)]);
         $suggestion->refresh();
         $suggestion->update([
             'status' => 'created',
@@ -91,7 +91,7 @@ class TourProvisioner
                 'content_successful' => $contentSuccessful,
                 'prices_found' => $priceResult['prices_found'],
                 'fallback_checked' => $priceResult['fallback_checked'],
-                'failed_sources_removed' => $priceResult['failed_sources_removed'],
+                'failed_sources_retained' => $priceResult['failed_sources_retained'],
                 'images_downloaded' => $imageResult['downloaded'],
                 'sources_added' => $sources,
                 'last_provisioned_at' => now()->toIso8601String(),
@@ -106,7 +106,7 @@ class TourProvisioner
             'content_crawled' => $contentSuccessful,
             'prices_found' => $priceResult['prices_found'],
             'fallback_checked' => $priceResult['fallback_checked'],
-            'failed_sources_removed' => $priceResult['failed_sources_removed'],
+            'failed_sources_retained' => $priceResult['failed_sources_retained'],
             'images_downloaded' => $imageResult['downloaded'],
         ];
     }

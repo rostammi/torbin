@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agency;
+use App\Models\SiteSetting;
 use App\Services\Billing\AgencyBillingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,17 +29,36 @@ class AgencyController extends Controller
             ->orderBy('name')
             ->paginate(20);
 
-        return view('admin.agencies.index', compact('agencies'));
+        $comparisonContactPhone = SiteSetting::comparisonContactPhone();
+
+        return view('admin.agencies.index', compact('agencies', 'comparisonContactPhone'));
     }
 
     public function update(Request $request, Agency $agency): RedirectResponse
     {
         $data = $request->validate([
             'cost_per_click' => ['required', 'integer', 'min:0', 'max:1000000000'],
+            'contact_priority' => ['sometimes', 'required', 'integer', 'min:0', 'max:100000'],
         ]);
         $agency->update($data);
 
         return back()->with('success', "هزینه هر کلیک {$agency->name} ذخیره شد.");
+    }
+
+    public function updateComparisonContact(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'comparison_contact_phone' => ['required', 'string', 'min:7', 'max:30', 'regex:/^[0-9۰-۹٠-٩+()\s-]+$/u'],
+        ], [
+            'comparison_contact_phone.regex' => 'شماره تماس فقط می‌تواند شامل رقم، فاصله، خط تیره، پرانتز و علامت + باشد.',
+        ]);
+
+        SiteSetting::query()->updateOrCreate(
+            ['key' => SiteSetting::CONTACT_PHONE],
+            ['value' => trim($data['comparison_contact_phone'])],
+        );
+
+        return back()->with('success', 'شماره تماس پیشنهادهای بدون قیمت ذخیره شد.');
     }
 
     public function adjustBalance(Request $request, Agency $agency, AgencyBillingService $billing): RedirectResponse

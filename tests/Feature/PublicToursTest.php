@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\SiteSetting;
 use App\Models\Tour;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -109,10 +110,53 @@ class PublicToursTest extends TestCase
         $tour->priceSources->each(fn ($source) => $source->agency->update(['balance' => 100_000]));
 
         $response = $this->get('/tours/kish')->assertOk();
-        $response->assertSeeInOrder(['فروشنده اول', 'فروشنده دوم']);
-        $response->assertDontSee('فروشنده بدون قیمت');
-        $response->assertSee('2 پیشنهاد دارای قیمت');
+        $response->assertSeeInOrder(['فروشنده اول', 'فروشنده دوم', 'فروشنده بدون قیمت']);
+        $response->assertSee('تماس بگیرید');
+        $response->assertSee('3 پیشنهاد، شامل 2 قیمت آنلاین');
         $response->assertSee('پیشنهاد ویژه');
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('مقایسه 3 سایت');
+    }
+
+    public function test_each_category_shows_only_the_highest_priority_unpriced_provider_and_admin_phone(): void
+    {
+        SiteSetting::create([
+            'key' => SiteSetting::CONTACT_PHONE,
+            'value' => '021-12345678',
+        ]);
+
+        foreach (array_keys(config('comparison.categories')) as $category) {
+            $tour = Tour::create([
+                'category' => $category,
+                'title' => "صفحه بدون قیمت {$category}",
+                'slug' => "unpriced-{$category}",
+                'description' => 'توضیحات',
+                'is_active' => true,
+            ]);
+            $lowPriority = $tour->priceSources()->create([
+                'provider_name' => "اولویت پایین {$category}",
+                'source_url' => 'https://example.com/low',
+                'extraction_type' => 'structured',
+                'latest_price' => null,
+            ]);
+            $highPriority = $tour->priceSources()->create([
+                'provider_name' => "اولویت بالا {$category}",
+                'source_url' => 'https://example.com/high',
+                'extraction_type' => 'structured',
+                'latest_price' => 0,
+            ]);
+            $lowPriority->agency->update(['contact_priority' => 50]);
+            $highPriority->agency->update(['contact_priority' => 1]);
+
+            $response = $this->get($tour->publicUrl())->assertOk();
+            $response->assertSee("اولویت بالا {$category}");
+            $response->assertDontSee("اولویت پایین {$category}");
+            $this->assertSame(1, substr_count($response->getContent(), 'تماس بگیرید'));
+            $response->assertSee('href="tel:02112345678" hidden', false);
+            $response->assertSee('>021-12345678</a>', false);
+        }
     }
 
     public function test_failed_sources_before_a_free_priced_source_do_not_hide_its_price(): void

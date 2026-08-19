@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\RecoverPriceSourceLink;
+use App\Models\SiteSetting;
 use App\Models\Tour;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -124,8 +125,15 @@ class AgencyBillingTest extends TestCase
 
         $this->actingAs($admin)->put(route('admin.agencies.update', $agency), [
             'cost_per_click' => 1_500,
+            'contact_priority' => 3,
         ])->assertRedirect();
         $this->assertSame(1_500, $agency->fresh()->cost_per_click);
+        $this->assertSame(3, $agency->fresh()->contact_priority);
+
+        $this->put(route('admin.agencies.comparison-contact'), [
+            'comparison_contact_phone' => '021-87654321',
+        ])->assertRedirect();
+        $this->assertSame('021-87654321', SiteSetting::comparisonContactPhone());
 
         $this->post(route('admin.agencies.balance', $agency), [
             'type' => 'credit', 'amount' => 20_000, 'note' => 'شارژ اولیه',
@@ -166,7 +174,7 @@ class AgencyBillingTest extends TestCase
         $this->get(route('tours.show', $tour))
             ->assertOk()
             ->assertDontSee($source->provider_name)
-            ->assertSee('هنوز قیمت معتبری برای این تور ثبت نشده است');
+            ->assertSee('هنوز فروشنده‌ای برای این تور ثبت نشده است');
     }
 
     public function test_free_source_with_zero_credit_is_also_hidden_from_comparison(): void
@@ -177,7 +185,7 @@ class AgencyBillingTest extends TestCase
         $this->get(route('tours.show', $tour))
             ->assertOk()
             ->assertDontSee($source->provider_name)
-            ->assertSee('هنوز قیمت معتبری برای این تور ثبت نشده است');
+            ->assertSee('هنوز فروشنده‌ای برای این تور ثبت نشده است');
     }
 
     public function test_new_agency_gets_default_credit_and_click_cost(): void

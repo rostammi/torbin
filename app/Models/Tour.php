@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Tour extends Model
 {
     use HasFactory;
+
+    protected $hidden = ['has_contact_source'];
 
     protected $fillable = [
         'category', 'title', 'slug', 'excerpt', 'description', 'auto_content', 'auto_content_updated_at',
@@ -114,6 +117,34 @@ class Tour extends Model
             ->orderBy('latest_price');
     }
 
+    public function publicComparisonSources(): Collection
+    {
+        $priced = $this->priceSources()
+            ->where('is_active', true)
+            ->funded()
+            ->where('latest_price', '>', 0)
+            ->orderBy('latest_price')
+            ->with('agency')
+            ->get();
+
+        $contactSource = $this->priceSources()
+            ->where('is_active', true)
+            ->where(fn (Builder $query) => $query
+                ->whereNull('latest_price')
+                ->orWhere('latest_price', '<=', 0))
+            ->orderBy(
+                Agency::query()
+                    ->select('contact_priority')
+                    ->whereColumn('agencies.id', 'price_sources.agency_id')
+                    ->limit(1),
+            )
+            ->orderBy('id')
+            ->with('agency')
+            ->first();
+
+        return $contactSource ? $priced->push($contactSource) : $priced;
+    }
+
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('is_active', true);
@@ -123,6 +154,16 @@ class Tour extends Model
     {
         return $query
             ->withMin(['priceSources as minimum_price' => fn ($source) => $source->where('is_active', true)->funded()->where('latest_price', '>', 0)], 'latest_price')
-            ->withCount(['priceSources as compared_sources_count' => fn ($source) => $source->where('is_active', true)->funded()->where('latest_price', '>', 0)]);
+            ->withCount(['priceSources as compared_sources_count' => fn ($source) => $source->where('is_active', true)->funded()->where('latest_price', '>', 0)])
+            ->withExists(['priceSources as has_contact_source' => fn ($source) => $source
+                ->where('is_active', true)
+                ->where(fn (Builder $missingPrice) => $missingPrice
+                    ->whereNull('latest_price')
+                    ->orWhere('latest_price', '<=', 0))]);
+    }
+
+    public function getComparedSourcesCountAttribute(mixed $value): int
+    {
+        return (int) $value + (int) ($this->attributes['has_contact_source'] ?? false);
     }
 }

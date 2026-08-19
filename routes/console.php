@@ -6,6 +6,7 @@ use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Services\Alerts\PriceAlertNotifier;
 use App\Services\Discovery\ComparisonCatalogDiscovery;
+use App\Services\Discovery\GeytReferencePageProvisioner;
 use App\Services\PriceCrawler;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -44,12 +45,20 @@ Artisan::command('content:crawl {tour?}', function (PriceCrawler $crawler) {
 
 Schedule::command('content:crawl')->dailyAt('02:30')->withoutOverlapping();
 
-Artisan::command('tours:discover', function (ComparisonCatalogDiscovery $discovery) {
+Artisan::command('tours:discover', function (ComparisonCatalogDiscovery $discovery, GeytReferencePageProvisioner $referencePages) {
     $run = SyncRun::create(['type' => 'discover_tours', 'started_at' => now()]);
     try {
         $result = $discovery->discover();
-        $run->update(['status' => 'success', 'total' => $result['total'], 'successful' => $result['total'], 'details' => $result, 'finished_at' => now()]);
-        $this->info("Discovered {$result['total']} comparison suggestions across all categories.");
+        $pages = $referencePages->provision();
+        $total = $result['total'] + $pages['total'];
+        $run->update([
+            'status' => 'success',
+            'total' => $total,
+            'successful' => $total,
+            'details' => ['discovery' => $result, 'reference_pages' => $pages],
+            'finished_at' => now(),
+        ]);
+        $this->info("Discovered {$result['total']} suggestions and ensured {$pages['total']} geyt.ir pages exist.");
     } catch (Throwable $exception) {
         $run->update(['status' => 'failed', 'error' => $exception->getMessage(), 'finished_at' => now()]);
         throw $exception;

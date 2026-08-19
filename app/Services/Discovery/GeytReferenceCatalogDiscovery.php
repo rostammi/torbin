@@ -3,16 +3,25 @@
 namespace App\Services\Discovery;
 
 use App\Models\TourSuggestion;
+use DOMDocument;
+use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class GeytReferenceCatalogDiscovery
 {
-    public function discover(): array
+    public function discover(?string $onlyCategory = null): array
     {
+        abort_unless($onlyCategory === null || array_key_exists($onlyCategory, config('comparison.categories')), 404);
         $summary = ['total' => 0, 'created' => 0, 'merged' => 0, 'categories' => []];
 
-        foreach (config('geyt_reference.catalogs', []) as $category => $labels) {
+        foreach (array_keys(config('comparison.categories')) as $category) {
+            if ($onlyCategory !== null && $category !== $onlyCategory) {
+                continue;
+            }
+
             $categorySummary = ['total' => 0, 'created' => 0, 'merged' => 0];
-            foreach (array_values(array_unique($labels)) as $label) {
+            foreach ($this->catalogEntries($category) as $entry) {
+                $label = $entry['label'];
                 $destination = $this->destination($category, $label);
                 $suggestion = TourSuggestion::query()
                     ->where('category', $category)
@@ -45,6 +54,7 @@ class GeytReferenceCatalogDiscovery
                 $reference = [
                     'label' => $label,
                     'category_url' => $this->categoryUrl($category),
+                    'page_url' => $entry['url'],
                     'synced_at' => now()->toIso8601String(),
                 ];
                 $metadata['geyt_references'] = collect($metadata['geyt_references'] ?? [])
@@ -64,6 +74,71 @@ class GeytReferenceCatalogDiscovery
         }
 
         return $summary;
+    }
+
+    private function catalogEntries(string $category): array
+    {
+        if (config('geyt_reference.live_discovery')) {
+            try {
+                $entries = $this->fetchCategory($category);
+                if ($entries !== []) {
+                    return $entries;
+                }
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
+
+        return collect(config("geyt_reference.catalogs.{$category}", []))
+            ->unique()
+            ->map(fn (string $label) => [
+                'label' => $label,
+                'url' => $this->categoryUrl($category),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function fetchCategory(string $category): array
+    {
+        $categoryUrl = $this->categoryUrl($category);
+        $itemPath = $category === 'stay' ? 'accommodation' : $category;
+        $html = Http::timeout(30)
+            ->retry(2, 500)
+            ->withUserAgent(config('crawler.user_agent'))
+            ->get($categoryUrl)
+            ->throw()
+            ->body();
+
+        $dom = new DOMDocument;
+        $previous = libxml_use_internal_errors(true);
+        try {
+            $dom->loadHTML('<?xml encoding="UTF-8">'.$html, LIBXML_NOERROR | LIBXML_NOWARNING);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+
+        $entries = [];
+        foreach ($dom->getElementsByTagName('a') as $anchor) {
+            $href = trim($anchor->getAttribute('href'));
+            $path = rawurldecode((string) parse_url($href, PHP_URL_PATH));
+            if (! preg_match("~^/{$itemPath}/[^/]+/?$~u", $path)) {
+                continue;
+            }
+
+            $label = trim(preg_replace('/\s+/u', ' ', $anchor->getAttribute('title')) ?? '');
+            if ($label === '' || $label === 'مشاهده قیمت ها') {
+                continue;
+            }
+
+            $url = str_starts_with($href, 'http')
+                ? $href
+                : rtrim(config('geyt_reference.source'), '/').'/'.ltrim($href, '/');
+            $entries[$url] = ['label' => $label, 'url' => $url];
+        }
+
+        return array_values($entries);
     }
 
     private function destination(string $category, string $label): string

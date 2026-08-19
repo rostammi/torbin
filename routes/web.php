@@ -63,6 +63,7 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
         Route::get('sync', [SyncController::class, 'index'])->name('sync.index');
         Route::post('sync', [SyncController::class, 'run'])->name('sync.run');
         Route::get('agencies', [AgencyController::class, 'index'])->name('agencies.index');
+        Route::put('agencies/comparison-contact', [AgencyController::class, 'updateComparisonContact'])->name('agencies.comparison-contact');
         Route::put('agencies/featured', [PriceSourceController::class, 'updateAgencyFeatured'])->name('agencies.featured');
         Route::put('agencies/{agency}', [AgencyController::class, 'update'])->name('agencies.update');
         Route::post('agencies/{agency}/balance', [AgencyController::class, 'adjustBalance'])->name('agencies.balance');

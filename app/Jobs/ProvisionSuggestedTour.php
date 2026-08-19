@@ -33,7 +33,7 @@ class ProvisionSuggestedTour implements ShouldQueue
                     'content_crawled' => $result['content_crawled'],
                     'prices_found' => $result['prices_found'],
                     'fallback_checked' => $result['fallback_checked'],
-                    'failed_sources_removed' => $result['failed_sources_removed'],
+                    'failed_sources_retained' => $result['failed_sources_retained'],
                     'images_downloaded' => $result['images_downloaded'],
                 ], 'finished_at' => now(),
             ]);
