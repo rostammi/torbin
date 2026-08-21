@@ -51,7 +51,7 @@ class AgencyBillingTest extends TestCase
         $source->agency->update(['balance' => 1_000, 'cost_per_click' => 2_000]);
 
         $this->get(route('outbound.click', $source))
-            ->assertRedirect(route('tours.show', $tour))
+            ->assertRedirect($tour->publicUrl())
             ->assertSessionHas('error');
 
         $this->assertSame(1_000, $source->agency->fresh()->balance);

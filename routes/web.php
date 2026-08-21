@@ -21,20 +21,30 @@ use App\Http\Controllers\StaticPageController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/tours', [HomeController::class, 'category'])->defaults('category_key', 'tour')->name('tours.index');
-Route::get('/hotels', [HomeController::class, 'category'])->defaults('category_key', 'hotel')->name('hotels.index');
-Route::get('/stays', [HomeController::class, 'category'])->defaults('category_key', 'stay')->name('stays.index');
-Route::get('/visas', [HomeController::class, 'category'])->defaults('category_key', 'visa')->name('visas.index');
+Route::get('/category/tour', [HomeController::class, 'category'])->defaults('category_key', 'tour')->name('tours.index');
+Route::get('/category/hotel', [HomeController::class, 'category'])->defaults('category_key', 'hotel')->name('hotels.index');
+Route::get('/category/accommodation', [HomeController::class, 'category'])->defaults('category_key', 'stay')->name('stays.index');
+Route::get('/category/visa', [HomeController::class, 'category'])->defaults('category_key', 'visa')->name('visas.index');
 Route::get('/about-us', [StaticPageController::class, 'show'])->defaults('slug', 'about-us')->name('pages.about');
 Route::get('/contact-us', [StaticPageController::class, 'show'])->defaults('slug', 'contact-us')->name('pages.contact');
 Route::get('/faq', [StaticPageController::class, 'show'])->defaults('slug', 'faq')->name('pages.faq');
-Route::get('/search', [SearchController::class, 'index'])->middleware('throttle:30,1')->name('search.index');
+Route::prefix('mag')->name('mag.')->group(function () {
+    foreach (\App\Models\StaticPage::MAG_SLUGS as $slug) {
+        Route::get($slug, [StaticPageController::class, 'show'])
+            ->defaults('slug', $slug)
+            ->name($slug);
+    }
+});
 Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->middleware('throttle:60,1')->name('search.suggestions');
+Route::get('/search/{query?}', [SearchController::class, 'index'])
+    ->where('query', '.*')
+    ->middleware('throttle:30,1')
+    ->name('search.index');
 Route::get('/providers/{provider}', [ProviderController::class, 'show'])->name('providers.show');
-Route::get('/tours/{tour}', [HomeController::class, 'show'])->name('tours.show');
-Route::get('/hotels/{tour}', [HomeController::class, 'show'])->defaults('category_key', 'hotel')->name('hotels.show');
-Route::get('/stays/{tour}', [HomeController::class, 'show'])->defaults('category_key', 'stay')->name('stays.show');
-Route::get('/visas/{tour}', [HomeController::class, 'show'])->defaults('category_key', 'visa')->name('visas.show');
+Route::get('/tour/{tour}', [HomeController::class, 'show'])->name('tours.show');
+Route::get('/hotel/{tour}', [HomeController::class, 'show'])->defaults('category_key', 'hotel')->name('hotels.show');
+Route::get('/accommodation/{tour}', [HomeController::class, 'show'])->defaults('category_key', 'stay')->name('stays.show');
+Route::get('/visa/{tour}', [HomeController::class, 'show'])->defaults('category_key', 'visa')->name('visas.show');
 Route::get('/go/{source}', OutboundClickController::class)->middleware('throttle:30,1')->name('outbound.click');
 Route::get('/ads/{advertisement}/click', AdvertisementClickController::class)->middleware('throttle:60,1')->name('advertisements.click');
 Route::post('/tours/{tour}/price-alerts', [PriceAlertController::class, 'store'])->middleware('throttle:5,1')->name('price-alerts.store');

@@ -13,7 +13,7 @@
             @include('advertisements._banner', ['advertisement' => $searchTopAd, 'class' => 'search-top-ad'])
         @endif
 
-        <form class="search-page-form" action="{{ route('search.index') }}" method="get">
+        <form class="search-page-form" action="{{ route('search.index') }}" method="get" data-search-form data-search-base-url="{{ route('search.index') }}">
             <input type="search" name="q" value="{{ $term }}" placeholder="مثلاً: سفر داخلی با ۴ میلیون کجا برم؟" minlength="3" required autofocus>
             <button class="button">جست‌وجو</button>
         </form>

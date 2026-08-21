@@ -57,7 +57,7 @@ class PriceAlertsTest extends TestCase
         $this->assertNotNull($alert->fresh()->last_notified_at);
         $this->assertSame(0, $notifier->notifyForTour($tour));
 
-        $this->get(route('price-alerts.unsubscribe', $token))->assertRedirect(route('tours.show', $tour));
+        $this->get(route('price-alerts.unsubscribe', $token))->assertRedirect($tour->publicUrl());
         $this->assertFalse($alert->fresh()->is_active);
     }
 

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Tour;
-use App\Models\TourSlugRedirect;
 use App\Models\TourSuggestion;
 use Illuminate\Support\Str;
 
@@ -45,7 +44,7 @@ class TourSlugGenerator
 
         return $suggestion
             ? $this->forSuggestion($suggestion, $tour)
-            : $this->unique($this->fromTitle($tour->title, $tour->category), $tour);
+            : $this->unique($this->fromTitle($tour->title, $tour->category ?: 'tour'), $tour);
     }
 
     public function fromTitle(string $title, string $category = 'tour'): string
@@ -83,10 +82,6 @@ class TourSlugGenerator
                 return;
             }
 
-            TourSlugRedirect::query()->updateOrCreate(
-                ['old_slug' => $tour->slug],
-                ['tour_id' => $tour->id],
-            );
             $tour->update(['slug' => $slug]);
             $updated++;
         });

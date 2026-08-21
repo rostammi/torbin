@@ -59,11 +59,7 @@ class TourController extends Controller
 
     public function update(Request $request, Tour $tour): RedirectResponse
     {
-        $oldSlug = $tour->slug;
         $tour->update($this->validated($request, $tour));
-        if ($tour->slug !== $oldSlug) {
-            $tour->slugRedirects()->updateOrCreate(['old_slug' => $oldSlug]);
-        }
 
         return redirect()->route('admin.tours.edit', $tour)->with('success', 'اطلاعات صفحه مقایسه ذخیره شد.');
     }

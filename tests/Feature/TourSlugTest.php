@@ -6,13 +6,14 @@ use App\Models\Tour;
 use App\Models\TourSuggestion;
 use App\Services\TourSlugGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class TourSlugTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_existing_tour_gets_a_readable_destination_slug_and_old_url_redirects_permanently(): void
+    public function test_existing_tour_gets_a_readable_destination_slug_and_old_url_stops_resolving(): void
     {
         $tour = Tour::create([
             'title' => 'تور مسقط | مقایسه قیمت و خرید از معتبرترین آژانس‌ها',
@@ -33,14 +34,10 @@ class TourSlugTest extends TestCase
 
         $this->assertSame(1, app(TourSlugGenerator::class)->refreshAll());
         $this->assertSame('muscat-tour', $tour->fresh()->slug);
-        $this->assertDatabaseHas('tour_slug_redirects', [
-            'tour_id' => $tour->id,
-            'old_slug' => 'tor-mskt',
-        ]);
-        $this->get('/tours/tor-mskt')
-            ->assertRedirect('/tours/muscat-tour')
-            ->assertStatus(301);
-        $this->get('/tours/muscat-tour')->assertOk();
+        $this->assertFalse(Schema::hasTable('tour_slug_redirects'));
+        $this->get('/tour/tor-mskt/')->assertNotFound();
+        $this->get('/tour/muscat-tour/')->assertOk();
+        $this->get('/tours/muscat-tour')->assertNotFound();
     }
 
     public function test_variants_receive_distinct_search_friendly_slugs(): void

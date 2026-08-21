@@ -51,10 +51,48 @@ class ComparisonCategoriesTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->get('/hotels')->assertOk()->assertSee('هتل مشهد');
-        $this->get('/hotels/mashhad-hotels')->assertOk()->assertSee('جزئیات هتل');
-        $this->get('/tours/mashhad-hotels')->assertNotFound();
-        $this->assertSame(url('/hotels/mashhad-hotels'), $hotel->publicUrl());
+        $this->get('/category/hotel/')->assertOk()->assertSee('هتل مشهد');
+        $this->get('/hotels')->assertNotFound();
+        $this->get('/hotel/mashhad-hotels/')->assertOk()->assertSee('جزئیات هتل');
+        $this->get('/hotels/mashhad-hotels')->assertNotFound();
+        $this->get('/tour/mashhad-hotels/')->assertNotFound();
+        $this->assertSame(url('/hotel/mashhad-hotels').'/', $hotel->publicUrl());
+    }
+
+    public function test_category_navigation_uses_the_new_urls_without_legacy_routes(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('href="'.url('/category/hotel').'/' .'"', false)
+            ->assertSee('href="'.url('/category/visa').'/' .'"', false)
+            ->assertSee('href="'.url('/category/accommodation').'/' .'"', false)
+            ->assertSee('href="'.url('/category/tour').'/' .'"', false);
+
+        foreach (['/tours', '/hotels', '/stays', '/visas'] as $legacyUrl) {
+            $this->get($legacyUrl)->assertNotFound();
+        }
+    }
+
+    public function test_each_comparison_page_uses_its_singular_public_url(): void
+    {
+        foreach ([
+            'tour' => ['/tour/', '/tours/'],
+            'hotel' => ['/hotel/', '/hotels/'],
+            'stay' => ['/accommodation/', '/stays/'],
+            'visa' => ['/visa/', '/visas/'],
+        ] as $category => [$baseUrl, $legacyBaseUrl]) {
+            $tour = Tour::create([
+                'category' => $category,
+                'title' => 'صفحه '.$category,
+                'slug' => 'comparison-'.$category,
+                'description' => 'توضیحات مقایسه',
+                'is_active' => true,
+            ]);
+
+            $this->assertSame(url($baseUrl.$tour->slug).'/', $tour->publicUrl());
+            $this->get($tour->publicUrl())->assertOk();
+            $this->get($legacyBaseUrl.$tour->slug)->assertNotFound();
+        }
     }
 
     public function test_category_pages_use_category_specific_slug_and_providers(): void

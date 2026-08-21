@@ -89,13 +89,8 @@ class TourDestinationConsolidationTest extends TestCase
             'tours/antalya-last-minute.jpg',
         ], $canonical->fresh()->gallery);
         $this->assertContains('تور آنتالیا لحظه آخری', $canonical->fresh()->seo_keywords);
-        $this->assertDatabaseHas('tour_slug_redirects', [
-            'old_slug' => 'last-minute-antalya-tour',
-            'tour_id' => $canonical->id,
-        ]);
-        $this->assertDatabaseHas('tour_slug_redirects', [
-            'old_slug' => $orphan->slug,
-            'tour_id' => $canonical->id,
-        ]);
+        $this->assertFalse(Schema::hasTable('tour_slug_redirects'));
+        $this->get('/tour/last-minute-antalya-tour/')->assertNotFound();
+        $this->get('/tour/'.$orphan->slug.'/')->assertNotFound();
     }
 }

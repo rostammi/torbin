@@ -38,7 +38,7 @@ class PriceCrawlerTest extends TestCase
         $this->assertDatabaseHas('price_histories', ['price_source_id' => $source->id, 'price' => 12_345_000]);
         $this->assertSame('دیدنی‌های مقصد تست', $source->fresh()->content_insights[0]['title']);
         $this->assertSame('دیدنی‌های مقصد تست', $tour->fresh()->auto_content['topics'][0]['title']);
-        $this->get('/tours/test')->assertOk()->assertSee('راهنمای تکمیلی تور تست')->assertSee('دیدنی‌های مقصد تست');
+        $this->get('/tour/test/')->assertOk()->assertSee('راهنمای تکمیلی تور تست')->assertSee('دیدنی‌های مقصد تست');
         $this->assertStringNotContainsString('متن متعلق به سایت منبع است', json_encode($tour->fresh()->auto_content));
     }
 

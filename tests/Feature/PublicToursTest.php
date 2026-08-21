@@ -109,7 +109,7 @@ class PublicToursTest extends TestCase
         ]);
         $tour->priceSources->each(fn ($source) => $source->agency->update(['balance' => 100_000]));
 
-        $response = $this->get('/tours/kish')->assertOk();
+        $response = $this->get('/tour/kish/')->assertOk();
         $response->assertSeeInOrder(['فروشنده اول', 'فروشنده دوم', 'فروشنده بدون قیمت']);
         $response->assertSee('تماس بگیرید');
         $response->assertSee('3 پیشنهاد، شامل 2 قیمت آنلاین');
@@ -215,7 +215,7 @@ class PublicToursTest extends TestCase
             ['price' => 8_500_000, 'rating' => 4.6, 'is_available' => true, 'observed_at' => now()],
         ]);
 
-        $this->get('/tours/shiraz-history')
+        $this->get('/tour/shiraz-history/')
             ->assertOk()
             ->assertSee('سابقه قیمت این تور')
             ->assertSee('4.6')
@@ -248,7 +248,7 @@ class PublicToursTest extends TestCase
             ['price' => 9_000_000, 'is_available' => true, 'observed_at' => now()],
         ]);
 
-        $this->get('/tours/qeshm-trend')
+        $this->get('/tour/qeshm-trend/')
             ->assertOk()
             ->assertViewHas('priceTrend', fn ($trend) => $trend->pluck('price')->all() === [8_000_000, 7_000_000])
             ->assertSee('روند کمترین قیمت تور')

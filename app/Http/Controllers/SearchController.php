@@ -13,7 +13,10 @@ class SearchController extends Controller
 {
     public function index(Request $request, TourSearch $search, SearchMissTracker $misses, AdvertisementManager $advertisements): View
     {
-        $term = trim($request->string('q')->toString());
+        $pathQuery = $request->route('query');
+        abort_if($pathQuery === null && $request->filled('q'), 404);
+
+        $term = $this->pathTerm($request, (string) $pathQuery);
         $intent = $search->intent($term);
         $tours = null;
         if (mb_strlen($term) >= 3) {
@@ -55,7 +58,25 @@ class SearchController extends Controller
         return response()->json([
             'items' => $items,
             'total' => $total,
-            'all_url' => route('search.index', ['q' => $term]),
+            'all_url' => $this->searchUrl($term),
         ]);
+    }
+
+    private function searchUrl(string $term): string
+    {
+        $pathQuery = str_replace('%20', '+', rawurlencode(trim($term)));
+
+        return rtrim(url('/search/'.$pathQuery), '/').'/';
+    }
+
+    private function pathTerm(Request $request, string $fallback): string
+    {
+        $path = (string) parse_url($request->getRequestUri(), PHP_URL_PATH);
+
+        if (preg_match('~/search/(.*?)/?$~u', $path, $matches) === 1) {
+            return trim(rawurldecode(str_replace('+', '%20', $matches[1])));
+        }
+
+        return trim(str_replace('+', ' ', $fallback));
     }
 }

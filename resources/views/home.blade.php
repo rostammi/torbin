@@ -36,7 +36,7 @@
             <section class="container category-home-section {{ $loop->first ? 'section-space' : '' }}">
                 <div class="section-head">
                     <div><span class="eyebrow">{{ $section['config']['label'] }}</span><h2>پیشنهادهای {{ $section['config']['plural'] }}</h2></div>
-                    <a class="button button-secondary" href="{{ route($section['config']['route'].'.index') }}">مشاهده همه {{ $section['config']['plural'] }} ←</a>
+                    <a class="button button-secondary" href="{{ route($section['config']['route'].'.index').'/' }}">مشاهده همه {{ $section['config']['plural'] }} ←</a>
                 </div>
                 <div class="tour-grid">
                     @forelse($section['items'] as $tour)

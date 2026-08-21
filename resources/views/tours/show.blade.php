@@ -13,7 +13,7 @@
         @endif
         <div class="tour-hero-overlay"></div>
         <div class="container tour-hero-content">
-            <a href="{{ route($tour->categoryConfig('route').'.index') }}" class="back-link">همه {{ $tour->categoryPlural() }} ←</a>
+            <a href="{{ route($tour->categoryConfig('route').'.index').'/' }}" class="back-link">همه {{ $tour->categoryPlural() }} ←</a>
             <h1>{{ $tour->title }}</h1>
             <p>{{ $tour->excerpt }}</p>
         </div>
@@ -178,6 +178,20 @@
                             @endforeach
                         </div>
                     </article>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    @if($relatedComparisons->isNotEmpty())
+        <section class="container related-comparisons">
+            <div class="section-head">
+                <div><span class="eyebrow">پیشنهادهای کاربردی برای ادامه سفر</span><h2>مقایسه‌های مرتبط با {{ $tour->title }}</h2></div>
+                <span class="muted">{{ $relatedComparisons->count() }} پیشنهاد مرتبط</span>
+            </div>
+            <div class="tour-grid">
+                @foreach($relatedComparisons as $relatedTour)
+                    @include('tours._card', ['tour' => $relatedTour, 'showCategoryBadge' => true])
                 @endforeach
             </div>
         </section>

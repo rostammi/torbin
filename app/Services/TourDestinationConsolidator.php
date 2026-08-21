@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Tour;
-use App\Models\TourSlugRedirect;
 use App\Models\TourSuggestion;
 use App\Services\Discovery\PopularTourDiscovery;
 use Illuminate\Support\Arr;
@@ -105,12 +104,6 @@ class TourDestinationConsolidator
 
                 $canonicalTour->refresh();
                 $newSlug = $this->slugs->unique($this->slugs->fromTitle("تور {$destination}"), $canonicalTour);
-                if ($newSlug !== $canonicalTour->slug) {
-                    TourSlugRedirect::query()->updateOrCreate(
-                        ['old_slug' => $canonicalTour->slug],
-                        ['tour_id' => $canonicalTour->id],
-                    );
-                }
                 $canonicalTour->update([
                     'title' => "تور {$destination} | مقایسه قیمت و خرید از معتبرترین آژانس‌ها",
                     'excerpt' => "مقایسه قیمت تور {$destination}، تور ارزان، لحظه آخری، اقساطی، هوایی و از تهران در یک صفحه.",
@@ -186,11 +179,6 @@ class TourDestinationConsolidator
         DB::table('tour_page_views')->where('tour_id', $duplicate->id)->update(['tour_id' => $canonical->id]);
         DB::table('outbound_clicks')->where('tour_id', $duplicate->id)->update(['tour_id' => $canonical->id]);
         TourSuggestion::query()->where('tour_id', $duplicate->id)->update(['tour_id' => $canonical->id]);
-        TourSlugRedirect::query()->where('tour_id', $duplicate->id)->update(['tour_id' => $canonical->id]);
-        TourSlugRedirect::query()->updateOrCreate(
-            ['old_slug' => $duplicate->slug],
-            ['tour_id' => $canonical->id],
-        );
         $duplicate->delete();
     }
 

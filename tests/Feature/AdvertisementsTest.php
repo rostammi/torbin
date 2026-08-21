@@ -83,7 +83,7 @@ class AdvertisementsTest extends TestCase
             ->assertOk()
             ->assertSee('تبلیغ اسلایدر صفحه اصلی')
             ->assertSee('تبلیغ بنر بین کارت‌های صفحه اصلی');
-        $this->get(route('search.index', ['q' => 'کیش']))
+        $this->get(route('search.index', ['query' => 'کیش']))
             ->assertOk()
             ->assertSee('تبلیغ بنر بالای صفحه جست‌وجو')
             ->assertSee('تبلیغ کادر داخل نتایج جست‌وجو');

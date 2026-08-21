@@ -52,6 +52,39 @@ class StaticPagesTest extends TestCase
         $this->get(route('pages.about'))->assertNotFound();
     }
 
+    public function test_mag_pages_are_seeded_at_their_original_urls_with_local_content_images(): void
+    {
+        foreach ([
+            'worldwide-tours' => ['تور خارجی', 'worldwide-tours.jpg'],
+            'accommodation' => ['رزرو اقامتگاه', 'accommodation.webp'],
+            'domestic-tours' => ['تور داخلی', 'domestic-tours.jpg'],
+            'domestic-hotels' => ['رزرو هتل داخلی', 'domestic-hotels.jpeg'],
+            'worldwide-hotels' => ['رزرو هتل خارجی', 'worldwide-hotels.jpg'],
+        ] as $slug => [$title, $image]) {
+            $page = StaticPage::where('slug', $slug)->sole();
+
+            $this->assertSame(url('/mag/'.$slug).'/', $page->publicUrl());
+            $this->get('/mag/'.$slug.'/')
+                ->assertOk()
+                ->assertSee($title)
+                ->assertSee('/images/mag/'.$image, false);
+        }
+    }
+
+    public function test_mag_pages_are_visible_in_static_page_management(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->get(route('admin.static-pages.index'))
+            ->assertOk()
+            ->assertSee('/mag/worldwide-tours/')
+            ->assertSee('/mag/accommodation/')
+            ->assertSee('/mag/domestic-tours/')
+            ->assertSee('/mag/domestic-hotels/')
+            ->assertSee('/mag/worldwide-hotels/');
+    }
+
     public function test_guest_cannot_manage_static_pages(): void
     {
         $this->get(route('admin.static-pages.index'))->assertRedirect('/login');

@@ -27,7 +27,8 @@ class SearchTest extends TestCase
             ->assertJsonCount(4, 'items')
             ->assertJsonPath('total', 6);
 
-        $this->assertStringContainsString('/search?q=', $response->json('all_url'));
+        $this->assertStringContainsString('/search/%D8%AA%D9%88%D8%B1/', $response->json('all_url'));
+        $this->assertStringNotContainsString('?q=', $response->json('all_url'));
     }
 
     public function test_search_matches_tour_title_description_and_funded_agency_name(): void
@@ -38,13 +39,13 @@ class SearchTest extends TestCase
         $hiddenAgency = $this->tour('سفر زمستانی', 'winter', 'توضیحات عمومی', 'آژانس بدون اعتبار', 0);
         Tour::create(['title' => 'تور غیرفعال شیراز', 'slug' => 'inactive', 'description' => 'بهارنارنج', 'is_active' => false]);
 
-        $this->get(route('search.index', ['q' => 'شیراز']))
+        $this->get(route('search.index', ['query' => 'شیراز']))
             ->assertOk()->assertSee($byTitle->title)->assertDontSee('تور غیرفعال شیراز');
-        $this->get(route('search.index', ['q' => 'بهارنارنج']))
+        $this->get(route('search.index', ['query' => 'بهارنارنج']))
             ->assertOk()->assertSee($byDescription->title)->assertDontSee('تور غیرفعال شیراز');
-        $this->get(route('search.index', ['q' => 'پرواز نوین']))
+        $this->get(route('search.index', ['query' => 'پرواز+نوین']))
             ->assertOk()->assertSee($byAgency->title);
-        $this->get(route('search.index', ['q' => 'آژانس بدون اعتبار']))
+        $this->get(route('search.index', ['query' => 'آژانس+بدون+اعتبار']))
             ->assertOk()->assertDontSee($hiddenAgency->title)->assertSee('نتیجه‌ای پیدا نشد');
     }
 
@@ -53,16 +54,33 @@ class SearchTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('id="site-search"', false)
-            ->assertSee('مرجع تخصصی مقایسه تور و هتل و اقامتگاه و ویزا')
+            ->assertSee('src="'.asset('images/geyt-logo.png').'"', false)
+            ->assertSee('class="brand-name"', false)
+            ->assertSee('مرجع تخصصی مقایسه تور، هتل، اقامتگاه و ویزا')
             ->assertSee(route('search.suggestions'), false);
+    }
+
+    public function test_query_string_search_url_is_not_supported(): void
+    {
+        $this->get('/search?q='.urlencode('تور استانبول'))->assertNotFound();
+    }
+
+    public function test_encoded_literal_plus_sign_is_not_treated_as_a_space(): void
+    {
+        $tour = $this->tour('تور C++', 'cpp-tour', 'سفر برنامه‌نویسان');
+
+        $this->get('/search/C%2B%2B/')
+            ->assertOk()
+            ->assertSee($tour->title)
+            ->assertSee('value="C++"', false);
     }
 
     public function test_searches_without_results_are_grouped_as_potential_keywords_for_admin(): void
     {
         $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
-            ->get(route('search.index', ['q' => 'تور مریخ']))->assertOk();
+            ->get(route('search.index', ['query' => 'تور+مریخ']))->assertOk();
         $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.11'])
-            ->get(route('search.index', ['q' => 'تور‌مریخ']))->assertOk();
+            ->get(route('search.index', ['query' => 'تور‌مریخ']))->assertOk();
 
         $this->assertSame(2, SearchMiss::count());
 
@@ -78,7 +96,7 @@ class SearchTest extends TestCase
     {
         $this->tour('تور شیراز', 'successful-shiraz', 'توضیحات');
 
-        $this->get(route('search.index', ['q' => 'شیراز']))->assertOk();
+        $this->get(route('search.index', ['query' => 'شیراز']))->assertOk();
 
         $this->assertDatabaseCount('search_misses', 0);
     }
@@ -92,7 +110,7 @@ class SearchTest extends TestCase
         $this->suggestion($expensive, 'کیش', 'domestic');
         $this->suggestion($foreign, 'استانبول', 'foreign');
 
-        $response = $this->get(route('search.index', ['q' => 'سفر داخلی با ۴ میلیون تومن کجا میتونم برم']));
+        $response = $this->get(route('search.index', ['query' => 'سفر+داخلی+با+۴+میلیون+تومن+کجا+میتونم+برم']));
 
         $response->assertOk()
             ->assertSee('پیشنهادهای متناسب با بودجه شما')

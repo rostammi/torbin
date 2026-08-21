@@ -14,7 +14,7 @@
                 @foreach($pages as $page)
                     <tr>
                         <td><strong>{{ $page->title }}</strong></td>
-                        <td><span dir="ltr">/{{ $page->slug }}</span></td>
+                        <td><a dir="ltr" href="{{ $page->publicUrl() }}" target="_blank">{{ parse_url($page->publicUrl(), PHP_URL_PATH) }}</a></td>
                         <td><span class="status {{ $page->is_published ? 'success' : '' }}">{{ $page->is_published ? 'منتشرشده' : 'پیش‌نویس' }}</span></td>
                         <td class="actions"><a href="{{ route('admin.static-pages.edit', $page) }}">ویرایش محتوا</a></td>
                     </tr>

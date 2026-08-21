@@ -7,7 +7,7 @@ use App\Models\SiteSetting;
 use App\Models\Tour;
 use App\Services\Advertising\AdvertisementManager;
 use App\Services\Analytics\TourViewTracker;
-use Illuminate\Http\RedirectResponse;
+use App\Services\RelatedComparisons;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -63,12 +63,10 @@ class HomeController extends Controller
         Tour $tour,
         TourViewTracker $views,
         AdvertisementManager $advertisements,
-    ): RedirectResponse|View {
+        RelatedComparisons $related,
+    ): View {
         $requestedCategory = (string) ($request->route('category_key') ?: 'tour');
         abort_unless($tour->category === $requestedCategory, 404);
-        if ($tour->getAttribute('resolved_from_slug')) {
-            return redirect()->to($tour->publicUrl(), 301);
-        }
 
         abort_unless($tour->is_active, 404);
         $views->track($tour, $request);
@@ -76,6 +74,7 @@ class HomeController extends Controller
         $tour->setRelation('priceSources', $comparisonSources);
         $comparisonContactPhone = SiteSetting::comparisonContactPhone();
         $comparisonContactHref = SiteSetting::phoneHref($comparisonContactPhone);
+        $relatedComparisons = $related->for($tour);
 
         $historyQuery = PriceHistory::query()
             ->whereIn('price_source_id', $comparisonSources->where('latest_price', '>', 0)->pluck('id'))
@@ -123,6 +122,7 @@ class HomeController extends Controller
             'offersBottomAd',
             'comparisonContactPhone',
             'comparisonContactHref',
+            'relatedComparisons',
         ));
     }
 }

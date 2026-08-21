@@ -13,12 +13,19 @@
     <header class="site-header">
         <div class="container nav-wrap">
             <div class="header-branding">
-                <a class="brand" href="{{ route('home') }}"><span>گ</span>یت</a>
-                <span class="header-slogan">مرجع تخصصی مقایسه تور و هتل و اقامتگاه و ویزا</span>
+                <a class="brand" href="{{ route('home') }}" aria-label="گیت؛ صفحه اصلی">
+                    <span class="brand-logo-mark" aria-hidden="true">
+                        <img src="{{ asset('images/geyt-logo.png') }}" alt="" width="299" height="80">
+                    </span>
+                    <span class="brand-copy">
+                        <span class="brand-name"><span>گ</span>یت</span>
+                        <span class="header-slogan">مرجع تخصصی مقایسه تور، هتل، اقامتگاه و ویزا</span>
+                    </span>
+                </a>
             </div>
             <div class="header-search" data-suggestions-url="{{ route('search.suggestions') }}">
-                <form action="{{ route('search.index') }}" method="get" role="search">
-                    <input id="site-search" type="search" name="q" value="{{ request()->routeIs('search.*') ? request('q') : '' }}" placeholder="مثلاً سفر داخلی با ۴ میلیون…" minlength="3" autocomplete="off" aria-label="جست‌وجوی خدمات سفر" aria-controls="search-suggestions" aria-expanded="false">
+                <form action="{{ route('search.index') }}" method="get" role="search" data-search-form data-search-base-url="{{ route('search.index') }}">
+                    <input id="site-search" type="search" name="q" value="{{ request()->routeIs('search.index') ? ($term ?? str_replace('+', ' ', request()->route('query') ?? '')) : '' }}" placeholder="مثلاً سفر داخلی با ۴ میلیون…" minlength="3" autocomplete="off" aria-label="جست‌وجوی خدمات سفر" aria-controls="search-suggestions" aria-expanded="false">
                     <button type="submit" aria-label="جست‌وجو">⌕</button>
                 </form>
                 <div id="search-suggestions" class="search-suggestions" role="listbox" hidden></div>
@@ -31,10 +38,10 @@
                             <summary>مشاهده سایت</summary>
                             <div class="nav-dropdown">
                                 <a class="{{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">صفحه اصلی</a>
-                                <a class="{{ request()->routeIs('tours.*') ? 'active' : '' }}" href="{{ route('tours.index') }}">تورها</a>
-                                <a class="{{ request()->routeIs('hotels.*') ? 'active' : '' }}" href="{{ route('hotels.index') }}">هتل‌ها</a>
-                                <a class="{{ request()->routeIs('stays.*') ? 'active' : '' }}" href="{{ route('stays.index') }}">اقامتگاه‌ها</a>
-                                <a class="{{ request()->routeIs('visas.*') ? 'active' : '' }}" href="{{ route('visas.index') }}">ویزاها</a>
+                                <a class="{{ request()->routeIs('tours.*') ? 'active' : '' }}" href="{{ route('tours.index').'/' }}">تورها</a>
+                                <a class="{{ request()->routeIs('hotels.*') ? 'active' : '' }}" href="{{ route('hotels.index').'/' }}">هتل‌ها</a>
+                                <a class="{{ request()->routeIs('stays.*') ? 'active' : '' }}" href="{{ route('stays.index').'/' }}">اقامتگاه‌ها</a>
+                                <a class="{{ request()->routeIs('visas.*') ? 'active' : '' }}" href="{{ route('visas.index').'/' }}">ویزاها</a>
                             </div>
                         </details>
                         <details class="nav-menu {{ request()->routeIs('admin.tours.*', 'admin.comparison-sources.*', 'admin.agencies.*') ? 'active' : '' }}">
@@ -61,10 +68,10 @@
                             </div>
                         </details>
                     @else
-                        <a href="{{ route('tours.index') }}">تورها</a>
-                        <a href="{{ route('hotels.index') }}">هتل‌ها</a>
-                        <a href="{{ route('stays.index') }}">اقامتگاه‌ها</a>
-                        <a href="{{ route('visas.index') }}">ویزا</a>
+                        <a href="{{ route('tours.index').'/' }}">تورها</a>
+                        <a href="{{ route('hotels.index').'/' }}">هتل‌ها</a>
+                        <a href="{{ route('stays.index').'/' }}">اقامتگاه‌ها</a>
+                        <a href="{{ route('visas.index').'/' }}">ویزا</a>
                         <a href="{{ route('admin.dashboard') }}">داشبورد</a>
                     @endif
                     <form action="{{ route('logout') }}" method="post" class="inline-form">
@@ -72,10 +79,10 @@
                         <button class="link-button" type="submit">خروج</button>
                     </form>
                 @else
-                    <a href="{{ route('tours.index') }}">تورها</a>
-                    <a href="{{ route('hotels.index') }}">هتل‌ها</a>
-                    <a href="{{ route('stays.index') }}">اقامتگاه‌ها</a>
-                    <a href="{{ route('visas.index') }}">ویزا</a>
+                    <a href="{{ route('tours.index').'/' }}">تورها</a>
+                    <a href="{{ route('hotels.index').'/' }}">هتل‌ها</a>
+                    <a href="{{ route('stays.index').'/' }}">اقامتگاه‌ها</a>
+                    <a href="{{ route('visas.index').'/' }}">ویزا</a>
                     <a href="{{ route('login') }}">ورود مدیر</a>
                 @endauth
             </nav>
@@ -104,15 +111,34 @@
             </div>
             <div>
                 <strong>دسته‌بندی‌ها</strong>
-                <a href="{{ route('tours.index') }}">تورها</a>
-                <a href="{{ route('hotels.index') }}">هتل‌ها</a>
-                <a href="{{ route('stays.index') }}">اقامتگاه‌ها</a>
-                <a href="{{ route('visas.index') }}">ویزا</a>
+                <a href="{{ route('tours.index').'/' }}">تورها</a>
+                <a href="{{ route('hotels.index').'/' }}">هتل‌ها</a>
+                <a href="{{ route('stays.index').'/' }}">اقامتگاه‌ها</a>
+                <a href="{{ route('visas.index').'/' }}">ویزا</a>
             </div>
             <div>
                 <strong>اطلاعات تماس</strong>
                 <a href="tel:09199010216" dir="ltr">۰۹۱۹۹۰۱۰۲۱۶</a>
                 <a href="mailto:info@geyt.ir" dir="ltr">info@geyt.ir</a>
+            </div>
+            <div class="footer-licenses">
+                <strong>مجوزها</strong>
+                <div class="license-list">
+                    <a class="license-badge" href="https://trustseal.enamad.ir/?id=522515&amp;Code=1b3swSGBmJiCpB9APi3D7QOz5GOSJKC2" target="_blank" rel="noopener noreferrer" referrerpolicy="origin" aria-label="استعلام نماد اعتماد الکترونیکی گیت">
+                        <span class="license-logo">
+                            <span class="license-placeholder" aria-hidden="true">اینماد</span>
+                            <img src="https://trustseal.enamad.ir/logo.aspx?id=522515&amp;Code=1b3swSGBmJiCpB9APi3D7QOz5GOSJKC2" alt="نماد اعتماد الکترونیکی گیت" loading="lazy" referrerpolicy="origin" onerror="this.hidden=true">
+                        </span>
+                        <small>نماد اعتماد الکترونیکی</small>
+                    </a>
+                    <a class="license-badge" href="https://logo.samandehi.ir/Verify.aspx?id=371533&amp;p=xlaojyoerfthdshwxlaoxlao" target="_blank" rel="noopener noreferrer" referrerpolicy="origin" aria-label="استعلام نشان ساماندهی گیت">
+                        <span class="license-logo">
+                            <span class="license-placeholder" aria-hidden="true">ساماندهی</span>
+                            <img id="rgvjjzpejxlzapfurgvjrgvj" src="https://logo.samandehi.ir/logo.aspx?id=371533&amp;p=qftiyndtnbpdujynqftiqfti" alt="نشان ساماندهی گیت" loading="lazy" referrerpolicy="origin" onerror="this.hidden=true">
+                        </span>
+                        <small>نشان ساماندهی</small>
+                    </a>
+                </div>
             </div>
         </div>
         <div class="container footer-bottom">کلیه حقوق این سایت متعلق به گیت است.</div>
@@ -123,6 +149,17 @@
             const input = document.querySelector('#site-search');
             const results = document.querySelector('#search-suggestions');
             if (!box || !input || !results) return;
+
+            document.querySelectorAll('[data-search-form]').forEach(form => {
+                form.addEventListener('submit', event => {
+                    const query = form.querySelector('input[name="q"]')?.value.trim();
+                    if (!query) return;
+
+                    event.preventDefault();
+                    const encodedQuery = encodeURIComponent(query).replace(/%20/g, '+');
+                    window.location.assign(`${form.dataset.searchBaseUrl.replace(/\/$/, '')}/${encodedQuery}/`);
+                });
+            });
 
             let timer;
             let request;
