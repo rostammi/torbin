@@ -81,7 +81,6 @@ class HomeController extends Controller
         $comparisonSources = $tour->publicComparisonSources();
         $tour->setRelation('priceSources', $comparisonSources);
         $comparisonContactPhone = SiteSetting::comparisonContactPhone();
-        $comparisonContactHref = SiteSetting::phoneHref($comparisonContactPhone);
         $relatedComparisons = $related->for($tour);
 
         $historyQuery = PriceHistory::query()
@@ -130,7 +129,6 @@ class HomeController extends Controller
             'trendTopAd',
             'offersBottomAd',
             'comparisonContactPhone',
-            'comparisonContactHref',
             'relatedComparisons',
             'structuredData',
         ));

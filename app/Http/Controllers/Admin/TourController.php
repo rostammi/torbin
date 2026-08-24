@@ -52,7 +52,10 @@ class TourController extends Controller
 
     public function edit(Tour $tour): View
     {
-        $tour->load(['priceSources' => fn ($query) => $query->latest()]);
+        $tour->load(['priceSources' => fn ($query) => $query
+            ->orderByDesc('is_pinned')
+            ->orderBy('display_priority')
+            ->orderBy('latest_price')]);
 
         return view('admin.tours.edit', compact('tour'));
     }

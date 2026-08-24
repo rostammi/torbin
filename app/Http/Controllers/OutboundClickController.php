@@ -24,6 +24,10 @@ class OutboundClickController extends Controller
             return $this->brokenLinkResponse($source);
         }
         abort_unless($source->is_active, 404);
+        if ($source->is_contact_only) {
+            return redirect()->to($source->tour->publicUrl())
+                ->with('error', 'این پیشنهاد فقط از طریق تماس تلفنی قابل پیگیری است.');
+        }
 
         $destination = $source->buy_url ?: $source->source_url;
         if (! filter_var($destination, FILTER_VALIDATE_URL)

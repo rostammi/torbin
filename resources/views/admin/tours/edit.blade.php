@@ -82,6 +82,8 @@
                     <summary>
                         <span><strong>{{ $source->provider_name }}</strong><small>{{ $source->extraction_type }}</small></span>
                         <span class="source-summary">
+                            @if($source->is_pinned)<i class="status featured">ابتدای لیست</i>@endif
+                            @if($source->is_contact_only)<i class="status">تماس بگیرید</i>@endif
                             @if($source->is_featured)<i class="status featured">پیشنهاد ویژه</i>@endif
                             @if($source->latest_price)<b>{{ number_format($source->latest_price) }} {{ $source->currency }}</b>@endif
                             <i class="status {{ $source->last_status === 'success' || $source->last_status === 'manual' ? 'success' : ($source->last_status === 'failed' ? 'failed' : '') }}">{{ ['success'=>'موفق', 'empty'=>'بدون پیشنهاد فعال', 'failed'=>'خطا', 'manual'=>'دستی'][$source->last_status] ?? 'بررسی‌نشده' }}</i>

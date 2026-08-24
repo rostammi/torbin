@@ -54,6 +54,22 @@ class AdminFeaturedOffersTest extends TestCase
         $this->assertTrue($source->fresh()->is_featured);
     }
 
+    public function test_bulk_unfeature_does_not_remove_featured_badge_from_a_pinned_source(): void
+    {
+        $tour = $this->tour('pinned');
+        $source = $this->source($tour, 'علی‌بابا');
+        $source->update(['is_pinned' => true]);
+
+        $this->actingAs(User::factory()->create())
+            ->put(route('admin.agencies.featured'), [
+                'provider_name' => 'علی‌بابا',
+                'is_featured' => false,
+            ])
+            ->assertRedirect();
+
+        $this->assertTrue($source->fresh()->is_featured);
+    }
+
     private function tour(string $slug): Tour
     {
         return Tour::create([

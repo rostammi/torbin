@@ -101,14 +101,22 @@ class Tour extends Model
     {
         $priced = $this->priceSources()
             ->where('is_active', true)
+            ->where('is_contact_only', false)
             ->funded()
             ->where('latest_price', '>', 0)
             ->orderBy('latest_price')
             ->with('agency')
             ->get();
 
+        $forcedContactSources = $this->priceSources()
+            ->where('is_active', true)
+            ->where('is_contact_only', true)
+            ->with('agency')
+            ->get();
+
         $contactSource = $this->priceSources()
             ->where('is_active', true)
+            ->where('is_contact_only', false)
             ->where(fn (Builder $query) => $query
                 ->whereNull('latest_price')
                 ->orWhere('latest_price', '<=', 0))
@@ -122,7 +130,21 @@ class Tour extends Model
             ->with('agency')
             ->first();
 
-        return $contactSource ? $priced->push($contactSource) : $priced;
+        $sources = $priced->concat($forcedContactSources);
+        if ($contactSource && ! $sources->contains('id', $contactSource->id)) {
+            $sources->push($contactSource);
+        }
+
+        return $sources
+            ->sortBy(fn (PriceSource $source) => [
+                $source->is_pinned ? 0 : 1,
+                $source->display_priority,
+                $source->latest_price > 0
+                    ? ($source->currency === 'ریال' ? $source->latest_price / 10 : $source->latest_price)
+                    : PHP_INT_MAX,
+                $source->id,
+            ])
+            ->values();
     }
 
     public function scopePublished(Builder $query): Builder

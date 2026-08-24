@@ -16,7 +16,8 @@ class PriceSource extends Model
         'tour_id', 'agency_id', 'provider_name', 'source_url', 'buy_url', 'extraction_type', 'selector',
         'price_multiplier', 'latest_price', 'currency', 'source_currency', 'is_active', 'last_checked_at',
         'last_status', 'last_error', 'latest_rating', 'latest_rating_count', 'rating_type',
-        'latest_details', 'rejected_urls', 'is_featured', 'content_insights', 'content_checked_at', 'content_error',
+        'latest_details', 'rejected_urls', 'is_featured', 'is_contact_only', 'contact_phone',
+        'display_priority', 'is_pinned', 'content_insights', 'content_checked_at', 'content_error',
     ];
 
     protected function casts(): array
@@ -31,6 +32,9 @@ class PriceSource extends Model
             'content_insights' => 'array',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
+            'is_contact_only' => 'boolean',
+            'display_priority' => 'integer',
+            'is_pinned' => 'boolean',
             'last_checked_at' => 'datetime',
             'content_checked_at' => 'datetime',
         ];
@@ -58,6 +62,10 @@ class PriceSource extends Model
     protected static function booted(): void
     {
         static::saving(function (PriceSource $source) {
+            if ($source->is_pinned) {
+                $source->is_featured = true;
+            }
+
             if ($source->provider_name && ($source->isDirty('provider_name') || ! $source->agency_id)) {
                 $source->agency_id = Agency::firstOrCreate(
                     ['name' => $source->provider_name],

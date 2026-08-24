@@ -80,6 +80,7 @@
                 <h2>مقایسه فروشنده‌ها</h2>
                 @php($pricedSourcesCount = $tour->priceSources->where('latest_price', '>', 0)->count())
                 @php($displayedSourcesCount = $tour->priceSources->count())
+                @php($bestPricedSourceId = optional($tour->priceSources->where('latest_price', '>', 0)->sortBy(fn($item) => $item->currency === 'ریال' ? $item->latest_price / 10 : $item->latest_price)->first())->id)
                 <p>
                     @if($pricedSourcesCount)
                         {{ $displayedSourcesCount }} پیشنهاد، شامل {{ $pricedSourcesCount }} قیمت آنلاین
@@ -91,8 +92,8 @@
 
             <div class="price-list">
                 @forelse ($tour->priceSources as $index => $source)
-                    <div class="price-row {{ $loop->first && $source->latest_price > 0 ? 'best-price' : '' }} {{ $source->is_featured ? 'has-featured' : '' }}">
-                        @if ($loop->first && $source->latest_price > 0)<span class="best-label">بهترین قیمت</span>@endif
+                    <div class="price-row {{ $source->id === $bestPricedSourceId ? 'best-price' : '' }} {{ $source->is_featured ? 'has-featured' : '' }}">
+                        @if ($source->id === $bestPricedSourceId)<span class="best-label">بهترین قیمت</span>@endif
                         @if ($source->is_featured)<span class="special-offer-badge">پیشنهاد ویژه</span>@endif
                         <div class="provider">
                             <span class="provider-rank">{{ $index + 1 }}</span>
@@ -116,14 +117,18 @@
                         <div class="price-action">
                             @if($source->latest_price > 0)
                                 <strong>{{ number_format($source->latest_price) }} <small>{{ $source->currency }}</small></strong>
+                            @endif
+                            @if($source->is_contact_only || $source->latest_price <= 0)
+                                @php($sourceContactPhone = $source->contact_phone ?: $comparisonContactPhone)
+                                @php($sourceContactHref = \App\Models\SiteSetting::phoneHref($sourceContactPhone))
+                                <button class="contact-reveal" type="button" aria-expanded="false">تماس بگیرید</button>
+                                <a class="contact-phone" dir="ltr" href="tel:{{ $sourceContactHref }}" hidden>{{ $sourceContactPhone }}</a>
+                            @elseif($source->latest_price > 0)
                                 @if(!$source->agency || $source->agency->canAffordClick())
                                     <a href="{{ route('outbound.click', $source) }}" target="_blank" rel="nofollow sponsored noopener">مشاهده پیشنهاد ↗</a>
                                 @else
                                     <span class="buy-disabled">اعتبار ارائه‌دهنده کافی نیست</span>
                                 @endif
-                            @else
-                                <button class="contact-reveal" type="button" aria-expanded="false">تماس بگیرید</button>
-                                <a class="contact-phone" dir="ltr" href="tel:{{ $comparisonContactHref }}" hidden>{{ $comparisonContactPhone }}</a>
                             @endif
                         </div>
                     </div>
@@ -135,7 +140,7 @@
             @if($offersBottomAd)
                 @include('advertisements._banner', ['advertisement' => $offersBottomAd, 'class' => 'tour-offers-ad'])
             @endif
-            @php($alertOffer = $tour->priceSources->first(fn ($item) => $item->latest_price > 0))
+            @php($alertOffer = $tour->priceSources->firstWhere('id', $bestPricedSourceId))
             @if($alertOffer || $displayedSourcesCount > 0)
                 <div class="price-alert-box">
                     @if($alertOffer)
