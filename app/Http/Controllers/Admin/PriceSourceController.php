@@ -19,7 +19,7 @@ class PriceSourceController extends Controller
         $destination = preg_replace('/^تور(?:های)?\s+/u', '', $tour->title) ?: $tour->title;
         $count = $providers->attach($tour, $destination, 10);
 
-        return back()->with('success', "{$count} منبع تور اضافه شدند. برای دریافت قیمت، «بررسی همه قیمت‌ها» را بزنید.");
+        return back()->with('success', "{$count} منبع پیشنهاد اضافه شدند. برای دریافت قیمت، «بررسی همه قیمت‌ها» را بزنید.");
     }
 
     public function store(Request $request, Tour $tour, PriceAlertNotifier $alerts): RedirectResponse
@@ -85,12 +85,14 @@ class PriceSourceController extends Controller
             'price_multiplier' => ['required', 'numeric', 'min:0.01', 'max:100000'],
             'latest_price' => [Rule::requiredIf($type === 'manual'), 'nullable', 'integer', 'min:0'],
             'currency' => ['required', Rule::in(['تومان', 'ریال'])],
+            'source_currency' => ['nullable', Rule::in(['auto', 'toman', 'rial', 'usd', 'mixed'])],
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
         $data['is_featured'] = $request->boolean('is_featured');
+        $data['source_currency'] = $data['source_currency'] ?? 'auto';
         $data['buy_url'] = $data['buy_url'] ?: $data['source_url'];
         if ($type === 'manual') {
             $data['last_status'] = 'manual';

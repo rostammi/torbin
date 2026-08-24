@@ -3,6 +3,7 @@
 namespace App\Services\Crawlers;
 
 use App\Models\PriceSource;
+use App\Services\Currency\PriceCurrencyConverter;
 use App\Services\Outbound\RejectedUrlRegistry;
 use DOMDocument;
 use DOMElement;
@@ -16,7 +17,10 @@ class MarketplaceHtmlCrawler
 {
     private const MAX_DESTINATION_PAGES = 3;
 
-    public function __construct(private readonly RejectedUrlRegistry $rejectedUrls) {}
+    public function __construct(
+        private readonly RejectedUrlRegistry $rejectedUrls,
+        private readonly PriceCurrencyConverter $currencyConverter,
+    ) {}
 
     public function crawl(PriceSource $source): CrawlResult
     {
@@ -58,7 +62,9 @@ class MarketplaceHtmlCrawler
                 'stable_destination_url' => $stableDestinationUrl,
                 'destination' => $keyword,
                 'pages_checked' => $pagesChecked,
+                ...($cheapest['conversion_details'] ?? []),
             ]),
+            currency: $cheapest['currency'] ?? null,
         );
     }
 
@@ -157,7 +163,7 @@ class MarketplaceHtmlCrawler
     private function offersFromElement(DOMElement $element, string $url, string $title, PriceSource $source): array
     {
         $text = $element->textContent;
-        if (! preg_match('/(?:تومان|تومن|ریال)/u', $text)) {
+        if (! preg_match('/(?:تومان|تومن|ریال|دلار|USD|US\$|\$)/iu', $text)) {
             $currency = $this->currencyFromClasses($element);
             if ($currency) {
                 $text .= ' '.$currency;
@@ -190,9 +196,32 @@ class MarketplaceHtmlCrawler
     private function offersFromText(string $text, string $url, string $title, PriceSource $source): array
     {
         $offers = [];
+        $decoded = html_entity_decode($text, ENT_QUOTES | ENT_HTML5);
+
+        if (($source->source_currency ?? 'auto') === 'usd'
+            || ($source->source_currency ?? 'auto') === 'mixed'
+            || preg_match('/(?:دلار|USD|US\$|\$)/iu', $decoded)) {
+            try {
+                $normalized = $this->currencyConverter->convert($decoded, $source);
+                if ($normalized['price'] >= 100_000) {
+                    $offers[] = [
+                        'price' => $normalized['price'],
+                        'currency' => $normalized['currency'],
+                        'conversion_details' => $normalized['details'],
+                        'url' => $url,
+                        'title' => $title,
+                    ];
+                }
+            } catch (RuntimeException) {
+                // This element did not contain a complete dollar price; inspect other elements.
+            }
+
+            return $offers;
+        }
+
         preg_match_all(
             '/([0-9۰-۹٠-٩][0-9۰-۹٠-٩\s,.،٬٫]{2,20})\s*(تومان|تومن|ریال)/u',
-            html_entity_decode($text, ENT_QUOTES | ENT_HTML5),
+            $decoded,
             $matches,
             PREG_SET_ORDER,
         );

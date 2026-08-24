@@ -39,7 +39,7 @@ class RunAutomationSync implements ShouldQueue
         }
 
         try {
-            $details = [];
+            $details = $run->details ?? [];
             $total = $successful = 0;
             $retryingFailures = $this->retryTargets !== [];
             $discoveryCategories = [

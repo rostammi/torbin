@@ -14,7 +14,7 @@ class PriceSource extends Model
 
     protected $fillable = [
         'tour_id', 'agency_id', 'provider_name', 'source_url', 'buy_url', 'extraction_type', 'selector',
-        'price_multiplier', 'latest_price', 'currency', 'is_active', 'last_checked_at',
+        'price_multiplier', 'latest_price', 'currency', 'source_currency', 'is_active', 'last_checked_at',
         'last_status', 'last_error', 'latest_rating', 'latest_rating_count', 'rating_type',
         'latest_details', 'rejected_urls', 'is_featured', 'content_insights', 'content_checked_at', 'content_error',
     ];

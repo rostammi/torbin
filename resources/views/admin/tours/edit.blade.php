@@ -16,7 +16,7 @@
 
         @php($tourImages = collect([$tour->cover_image])->concat($tour->gallery ?? [])->filter()->unique()->values())
         <div class="subsection-head">
-            <div><span class="eyebrow">رسانه تور</span><h2>تصاویر و ترتیب نمایش</h2></div>
+            <div><span class="eyebrow">رسانه پیشنهاد</span><h2>تصاویر و ترتیب نمایش</h2></div>
             <div class="actions">
                 <form method="post" action="{{ route('admin.tours.add-images', $tour) }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='در صف…'">
                     @csrf
@@ -28,12 +28,12 @@
         @if($tourImages->isNotEmpty())
             <form class="panel image-order-panel" action="{{ route('admin.tours.reorder-images', $tour) }}" method="post" data-image-order>
                 @csrf @method('PUT')
-                <p>کارت‌ها را بکشید و جابه‌جا کنید یا از دکمه‌های جهت استفاده کنید. تصویر اول، عکس اصلی تور است.</p>
+                <p>کارت‌ها را بکشید و جابه‌جا کنید یا از دکمه‌های جهت استفاده کنید. تصویر اول، عکس اصلی پیشنهاد است.</p>
                 <div class="admin-image-grid">
                     @foreach($tourImages as $image)
                         <article class="admin-image-card" draggable="true">
                             <input type="hidden" name="images[]" value="{{ $image }}">
-                            <img src="{{ Storage::url($image) }}" alt="تصویر {{ $loop->iteration }} تور">
+                            <img src="{{ Storage::url($image) }}" alt="تصویر {{ $loop->iteration }} پیشنهاد">
                             <div>
                                 <strong class="image-position">{{ $loop->first ? 'عکس اصلی' : 'تصویر '.$loop->iteration }}</strong>
                                 <span class="image-move-actions">
@@ -47,14 +47,14 @@
                 <button class="button" type="submit">ذخیره ترتیب تصاویر</button>
             </form>
         @else
-            <div class="panel empty-images">هنوز تصویری برای این تور ثبت نشده است.</div>
+            <div class="panel empty-images">هنوز تصویری برای این پیشنهاد ثبت نشده است.</div>
         @endif
 
         <form class="panel admin-form manual-image-form" action="{{ route('admin.tours.upload-images', $tour) }}" method="post" enctype="multipart/form-data">
             @csrf
             <div>
                 <h3>افزودن عکس دستی</h3>
-                <p>می‌توانید چند عکس انتخاب کنید؛ نخستین فایل انتخاب‌شده به‌صورت پیش‌فرض عکس اول تور می‌شود.</p>
+                <p>می‌توانید چند عکس انتخاب کنید؛ نخستین فایل انتخاب‌شده به‌صورت پیش‌فرض عکس اول پیشنهاد می‌شود.</p>
             </div>
             <label>انتخاب تصاویر<input type="file" name="images[]" accept="image/*" multiple required></label>
             <button class="button" type="submit">آپلود و قراردادن در ابتدا</button>
@@ -63,9 +63,9 @@
         <div class="subsection-head">
             <div><span class="eyebrow">کراولرها</span><h2>منابع مقایسه قیمت</h2></div>
             <div class="actions">
-                <form method="post" action="{{ route('admin.sources.official', $tour) }}">@csrf<button class="button button-secondary">افزودن ۱۰ منبع تور</button></form>
+                <form method="post" action="{{ route('admin.sources.official', $tour) }}">@csrf<button class="button button-secondary">افزودن ۱۰ منبع پیشنهاد</button></form>
                 <form method="post" action="{{ route('admin.tours.crawl-content', $tour) }}">@csrf<button class="button button-secondary">بررسی محتوای همه منابع</button></form>
-                <form method="post" action="{{ route('admin.tours.crawl', $tour) }}">@csrf<button class="button">به‌روزرسانی قیمت این تور از ۱۰ سایت</button></form>
+                <form method="post" action="{{ route('admin.tours.crawl', $tour) }}">@csrf<button class="button">به‌روزرسانی قیمت این پیشنهاد از ۱۰ سایت</button></form>
             </div>
         </div>
 
@@ -84,7 +84,7 @@
                         <span class="source-summary">
                             @if($source->is_featured)<i class="status featured">پیشنهاد ویژه</i>@endif
                             @if($source->latest_price)<b>{{ number_format($source->latest_price) }} {{ $source->currency }}</b>@endif
-                            <i class="status {{ $source->last_status === 'success' || $source->last_status === 'manual' ? 'success' : ($source->last_status === 'failed' ? 'failed' : '') }}">{{ ['success'=>'موفق', 'empty'=>'بدون تور فعال', 'failed'=>'خطا', 'manual'=>'دستی'][$source->last_status] ?? 'بررسی‌نشده' }}</i>
+                            <i class="status {{ $source->last_status === 'success' || $source->last_status === 'manual' ? 'success' : ($source->last_status === 'failed' ? 'failed' : '') }}">{{ ['success'=>'موفق', 'empty'=>'بدون پیشنهاد فعال', 'failed'=>'خطا', 'manual'=>'دستی'][$source->last_status] ?? 'بررسی‌نشده' }}</i>
                         </span>
                     </summary>
                     @if($source->last_error)<div class="crawl-error">{{ $source->last_error }}</div>@endif

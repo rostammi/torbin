@@ -71,6 +71,22 @@ class StaticPagesTest extends TestCase
         }
     }
 
+    public function test_mag_index_lists_published_mag_pages_and_is_linked_from_header(): void
+    {
+        StaticPage::where('slug', 'worldwide-hotels')->update(['is_published' => false]);
+
+        $this->get(route('mag.index'))
+            ->assertOk()
+            ->assertSee('راهنمای سفر و اقامت')
+            ->assertSee('تور خارجی')
+            ->assertSee('/mag/worldwide-tours/', false)
+            ->assertDontSee('رزرو هتل خارجی');
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('href="'.route('mag.index').'/'.'">مگ</a>', false);
+    }
+
     public function test_mag_pages_are_visible_in_static_page_management(): void
     {
         $admin = User::factory()->create();

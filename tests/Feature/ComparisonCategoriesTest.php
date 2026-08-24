@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\RunAutomationSync;
+use App\Jobs\SyncCenter\DiscoverHotelsJob;
 use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Models\TourSuggestion;
@@ -63,10 +63,10 @@ class ComparisonCategoriesTest extends TestCase
     {
         $this->get(route('home'))
             ->assertOk()
-            ->assertSee('href="'.url('/category/hotel').'/' .'"', false)
-            ->assertSee('href="'.url('/category/visa').'/' .'"', false)
-            ->assertSee('href="'.url('/category/accommodation').'/' .'"', false)
-            ->assertSee('href="'.url('/category/tour').'/' .'"', false);
+            ->assertSee('href="'.url('/category/hotel').'/'.'"', false)
+            ->assertSee('href="'.url('/category/visa').'/'.'"', false)
+            ->assertSee('href="'.url('/category/accommodation').'/'.'"', false)
+            ->assertSee('href="'.url('/category/tour').'/'.'"', false);
 
         foreach (['/tours', '/hotels', '/stays', '/visas'] as $legacyUrl) {
             $this->get($legacyUrl)->assertNotFound();
@@ -147,9 +147,10 @@ class ComparisonCategoriesTest extends TestCase
             ->assertSessionHas('success');
 
         $run = SyncRun::where('type', 'discover_hotels')->sole();
-        Queue::assertPushed(RunAutomationSync::class, fn (RunAutomationSync $job) => $job->runId === $run->id);
+        Queue::assertPushed(DiscoverHotelsJob::class, fn (DiscoverHotelsJob $job) => $job->runId === $run->id
+            && $job->queue === 'sync');
 
-        app()->call([new RunAutomationSync($run->id), 'handle']);
+        app()->call([new DiscoverHotelsJob($run->id), 'handle']);
 
         $this->assertSame('success', $run->fresh()->status);
         $this->assertGreaterThan(0, TourSuggestion::where('category', 'hotel')->count());

@@ -2,7 +2,7 @@
 
 @section('title', $providerName.' | تور، هتل، اقامتگاه و ویزا در گیت')
 @section('meta')
-    <link rel="canonical" href="{{ route('providers.show', $provider) }}">
+    <link rel="canonical" href="{{ $canonicalUrl }}">
     <meta name="description" content="مشاهده و مقایسه همه تورها، هتل‌ها، اقامتگاه‌ها و خدمات ویزای ارائه‌شده توسط {{ $providerName }} در گیت.">
 @endsection
 

@@ -7,6 +7,7 @@ use App\Models\OutboundClick;
 use App\Models\Tour;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
 class AgencyDashboardTest extends TestCase
@@ -60,7 +61,42 @@ class AgencyDashboardTest extends TestCase
         $this->actingAs($user)->get(route('admin.agencies.index'))->assertForbidden();
         $this->actingAs($user)->get(route('admin.dashboard'))->assertOk();
         $this->actingAs($user)->get(route('admin.dashboard'))
-            ->assertDontSee('کیوردهای دارای پتانسیل اجرای تور');
+            ->assertDontSee('کیوردهای دارای پتانسیل ساخت پیشنهاد');
+    }
+
+    public function test_dashboard_suggestions_are_paginated_without_limiting_total_metrics(): void
+    {
+        foreach (range(1, 21) as $index) {
+            $tour = Tour::create([
+                'category' => 'hotel',
+                'title' => sprintf('پیشنهاد %02d', $index),
+                'slug' => sprintf('dashboard-suggestion-%02d', $index),
+                'description' => '...',
+                'is_active' => true,
+            ]);
+            if ($index === 21) {
+                $tour->pageViews()->create(['viewed_at' => now()]);
+            }
+        }
+
+        $admin = User::factory()->create();
+        $firstPage = $this->actingAs($admin)->get(route('admin.dashboard', ['period' => 'all']));
+
+        $firstPage->assertOk()
+            ->assertViewHas('tours', fn ($tours) => $tours instanceof LengthAwarePaginator
+                && $tours->total() === 21
+                && $tours->perPage() === 20)
+            ->assertViewHas('viewsTotal', 1)
+            ->assertSee('داشبورد عملکرد پیشنهادها')
+            ->assertSee('نمایش صفحات پیشنهاد')
+            ->assertSee('پیشنهاد 01')
+            ->assertDontSee('پیشنهاد 21')
+            ->assertSee(route('admin.dashboard', ['period' => 'all', 'page' => 2]));
+
+        $this->get(route('admin.dashboard', ['period' => 'all', 'page' => 2]))
+            ->assertOk()
+            ->assertSee('پیشنهاد 21')
+            ->assertDontSee('پیشنهاد 01');
     }
 
     public function test_agency_login_redirects_to_shared_dashboard(): void

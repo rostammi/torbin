@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'پیشنهادهای تور محبوب')
+@section('title', 'پیشنهادهای صفحات مقایسه')
 
 @section('content')
     <section class="container admin-page">
@@ -70,7 +70,7 @@
                         <td><span class="status {{ $suggestion->status === 'created' ? 'success' : ($suggestion->status === 'failed' ? 'failed' : '') }}">{{ match($suggestion->status) {'created' => 'ساخته‌شده', 'processing' => 'در حال پردازش', 'failed' => 'ناموفق', default => 'آماده ساخت'} }}</span></td>
                         <td class="actions">
                             @if ($suggestion->tour)
-                                <a href="{{ route('admin.tours.edit', $suggestion->tour) }}">ویرایش تور</a>
+                                <a href="{{ route('admin.tours.edit', $suggestion->tour) }}">ویرایش پیشنهاد</a>
                             @else
                                 <form method="post" action="{{ route('admin.suggestions.store', $suggestion) }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='در حال ساخت…'">@csrf<button class="button compact-button">ایجاد خودکار صفحه</button></form>
                             @endif

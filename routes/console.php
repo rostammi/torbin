@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Agency;
+use App\Models\LegacyRedirect;
 use App\Models\PriceSource;
 use App\Models\SyncRun;
 use App\Models\Tour;
@@ -8,6 +9,8 @@ use App\Services\Alerts\PriceAlertNotifier;
 use App\Services\Discovery\ComparisonCatalogDiscovery;
 use App\Services\Discovery\GeytReferencePageProvisioner;
 use App\Services\PriceCrawler;
+use App\Services\ScheduledSyncDispatcher;
+use App\Services\Seo\LegacyRedirectSynchronizer;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +20,51 @@ use Illuminate\Support\Facades\Schema;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('sync:work', function (ScheduledSyncDispatcher $scheduledSyncs) {
+    $scheduledSyncs->dispatchDailyPriceRefreshIfDue();
+
+    return $this->call('queue:work', [
+        'connection' => 'database',
+        '--queue' => 'sync',
+        '--stop-when-empty' => true,
+        '--tries' => 1,
+        '--timeout' => 86400,
+        '--memory' => 256,
+    ]);
+})->purpose('Process queued synchronization-center jobs and exit when the queue is empty');
+
+Artisan::command('sync:dispatch-daily-prices', function (ScheduledSyncDispatcher $scheduledSyncs) {
+    $run = $scheduledSyncs->dispatchDailyPriceRefreshIfDue();
+    $this->info($run
+        ? "Daily price refresh run #{$run->id} is queued or has already run today."
+        : 'Daily price refresh is not due yet.');
+})->purpose('Queue the daily price refresh once after its configured time');
+
+Schedule::command('sync:dispatch-daily-prices')
+    ->dailyAt(config('crawler.daily_price_refresh_at', '03:00'))
+    ->withoutOverlapping();
+
+Artisan::command('seo:audit-migration', function (LegacyRedirectSynchronizer $redirects) {
+    $sync = $redirects->sync();
+    $unmatched = LegacyRedirect::whereNull('tour_id')->count();
+    $inactiveTargets = LegacyRedirect::whereHas('tour', fn ($query) => $query->where('is_active', false))->count();
+
+    $this->info("URLهای بررسی‌شده: {$sync['total']}");
+    $this->info("ریدایرکت‌های دارای مقصد: {$sync['matched']}");
+    $this->line("URLهای نیازمند مرج دستی: {$unmatched}");
+    $this->line("مقصدهای غیرفعال: {$inactiveTargets}");
+
+    if ($unmatched > 0 || $inactiveTargets > 0) {
+        $this->error('ممیزی مهاجرت SEO ناموفق است؛ موارد بالا را پیش از لانچ در پنل ریدایرکت‌ها برطرف کنید.');
+
+        return 1;
+    }
+
+    $this->info('ممیزی مهاجرت SEO با موفقیت تکمیل شد.');
+
+    return 0;
+})->purpose('Synchronize and audit old geyt.ir URL mappings before launch');
 
 Artisan::command('prices:crawl {tour?}', function (PriceCrawler $crawler, PriceAlertNotifier $alerts) {
     $query = PriceSource::query()->where('is_active', true)->where('extraction_type', '!=', 'manual');
@@ -29,8 +77,6 @@ Artisan::command('prices:crawl {tour?}', function (PriceCrawler $crawler, PriceA
     $notified = $sources->pluck('tour_id')->unique()->sum(fn ($tourId) => $alerts->notifyForTour(Tour::findOrFail($tourId)));
     $this->info("Crawled {$sources->count()} sources; {$success} succeeded; {$notified} alerts sent.");
 })->purpose('Crawl active tour price sources');
-
-Schedule::command('prices:crawl')->hourly()->withoutOverlapping();
 
 Artisan::command('content:crawl {tour?}', function (PriceCrawler $crawler) {
     $query = PriceSource::query()->where('is_active', true);

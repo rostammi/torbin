@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Agency;
 use App\Models\Tour;
+use App\Services\Seo\StructuredDataBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ProviderController extends Controller
 {
-    public function show(Request $request, string $provider): View
+    public function show(Request $request, string $provider, StructuredDataBuilder $seo): View
     {
         $agencies = Agency::query()
             ->get()
@@ -47,9 +48,18 @@ class ProviderController extends Controller
             ->latest()
             ->paginate(12)
             ->withQueryString();
+        $canonicalUrl = route('providers.show', $provider);
+        $canonicalQuery = array_filter([
+            'category' => $category ?: null,
+            'page' => $items->currentPage() > 1 ? $items->currentPage() : null,
+        ]);
+        if ($canonicalQuery !== []) {
+            $canonicalUrl .= '?'.http_build_query($canonicalQuery);
+        }
+        $structuredData = $seo->provider($providerName, $canonicalUrl, $items->getCollection());
 
         return view('providers.show', compact(
-            'providerName', 'provider', 'categories', 'category', 'categoryCounts', 'items',
+            'providerName', 'provider', 'categories', 'category', 'categoryCounts', 'items', 'canonicalUrl', 'structuredData',
         ));
     }
 }

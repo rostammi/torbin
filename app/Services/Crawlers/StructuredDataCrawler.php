@@ -3,11 +3,14 @@
 namespace App\Services\Crawlers;
 
 use App\Models\PriceSource;
+use App\Services\Currency\PriceCurrencyConverter;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class StructuredDataCrawler
 {
+    public function __construct(private readonly PriceCurrencyConverter $currencyConverter) {}
+
     public function crawl(PriceSource $source): CrawlResult
     {
         $this->assertPublicUrl($source->source_url);
@@ -32,7 +35,19 @@ class StructuredDataCrawler
         }
 
         $offers = collect($offers)
-            ->map(fn (array $offer) => array_merge($offer, ['normalized_price' => $this->price($offer['price'] ?? null, (float) $source->price_multiplier)]))
+            ->map(function (array $offer) use ($source) {
+                try {
+                    $normalized = $this->currencyConverter->convert($offer['price'] ?? null, $source, $offer['currency'] ?? null);
+
+                    return array_merge($offer, [
+                        'normalized_price' => $normalized['price'],
+                        'normalized_currency' => $normalized['currency'],
+                        'conversion_details' => $normalized['details'],
+                    ]);
+                } catch (RuntimeException) {
+                    return array_merge($offer, ['normalized_price' => 0]);
+                }
+            })
             ->filter(fn (array $offer) => $offer['normalized_price'] > 0);
         if ($offers->isEmpty()) {
             throw new RuntimeException('قیمت ساختاریافته‌ای در صفحه ارائه‌دهنده پیدا نشد.');
@@ -47,7 +62,11 @@ class StructuredDataCrawler
             isset($rating['value']) ? min(5, (float) $rating['value']) : null,
             isset($rating['count']) ? (int) $rating['count'] : null,
             $rating ? 'user_rating' : null,
-            array_filter(['offer_title' => $cheapest['name'] ?? $source->tour->title]),
+            array_filter(array_merge(
+                ['offer_title' => $cheapest['name'] ?? $source->tour->title],
+                $cheapest['conversion_details'] ?? [],
+            )),
+            $cheapest['normalized_currency'] ?? null,
         );
     }
 
@@ -60,6 +79,7 @@ class StructuredDataCrawler
                 'price' => $node['lowPrice'] ?? $node['price'] ?? null,
                 'url' => $node['url'] ?? null,
                 'name' => $node['name'] ?? null,
+                'currency' => $node['priceCurrency'] ?? null,
             ];
         }
         if (in_array('AggregateRating', $types, true)) {
@@ -75,17 +95,6 @@ class StructuredDataCrawler
                 $this->collectStructuredValues($value, $offers, $ratings);
             }
         }
-    }
-
-    private function price(mixed $value, float $multiplier): int
-    {
-        if (! is_scalar($value)) {
-            return 0;
-        }
-        $value = str_replace(['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'], range(0, 9), (string) $value);
-        $digits = preg_replace('/[^0-9]/', '', $value) ?? '';
-
-        return (int) round(((int) $digits) * $multiplier);
     }
 
     private function assertPublicUrl(string $url): void

@@ -8,12 +8,13 @@ use App\Models\Tour;
 use App\Services\Advertising\AdvertisementManager;
 use App\Services\Analytics\TourViewTracker;
 use App\Services\RelatedComparisons;
+use App\Services\Seo\StructuredDataBuilder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class HomeController extends Controller
 {
-    public function index(AdvertisementManager $advertisements): View
+    public function index(AdvertisementManager $advertisements, StructuredDataBuilder $seo): View
     {
         $categorySections = collect(config('comparison.categories'))->map(function (array $config, string $category) {
             $items = Tour::query()
@@ -30,16 +31,17 @@ class HomeController extends Controller
         $homeSliderAds = $advertisements->forPlacement('home_slider', 8);
         $homeInlineAds = $advertisements->forPlacement('home_inline', 4);
         $category = $categoryConfig = null;
+        $structuredData = $seo->home();
 
-        return view('home', compact('categorySections', 'homeSliderAds', 'homeInlineAds', 'category', 'categoryConfig'));
+        return view('home', compact('categorySections', 'homeSliderAds', 'homeInlineAds', 'category', 'categoryConfig', 'structuredData'));
     }
 
-    public function category(Request $request, AdvertisementManager $advertisements): View
+    public function category(Request $request, AdvertisementManager $advertisements, StructuredDataBuilder $seo): View
     {
-        return $this->listing($advertisements, (string) $request->route('category_key'));
+        return $this->listing($advertisements, $seo, (string) $request->route('category_key'));
     }
 
-    private function listing(AdvertisementManager $advertisements, ?string $category = null): View
+    private function listing(AdvertisementManager $advertisements, StructuredDataBuilder $seo, ?string $category = null): View
     {
         $tours = Tour::query()
             ->published()
@@ -54,8 +56,13 @@ class HomeController extends Controller
             : $advertisements->forPlacement('home_inline', (int) ceil($tours->count() / 9));
 
         $categoryConfig = $category ? config("comparison.categories.{$category}") : null;
+        $canonicalUrl = route($categoryConfig['route'].'.index').'/';
+        if ($tours->currentPage() > 1) {
+            $canonicalUrl .= '?page='.$tours->currentPage();
+        }
+        $structuredData = $seo->listing($category, $tours->getCollection(), $canonicalUrl);
 
-        return view('home', compact('tours', 'homeSliderAds', 'homeInlineAds', 'category', 'categoryConfig'));
+        return view('home', compact('tours', 'homeSliderAds', 'homeInlineAds', 'category', 'categoryConfig', 'canonicalUrl', 'structuredData'));
     }
 
     public function show(
@@ -64,6 +71,7 @@ class HomeController extends Controller
         TourViewTracker $views,
         AdvertisementManager $advertisements,
         RelatedComparisons $related,
+        StructuredDataBuilder $seo,
     ): View {
         $requestedCategory = (string) ($request->route('category_key') ?: 'tour');
         abort_unless($tour->category === $requestedCategory, 404);
@@ -114,6 +122,7 @@ class HomeController extends Controller
             ->values();
         $trendTopAd = $advertisements->forPlacement('tour_trend_top')->first();
         $offersBottomAd = $advertisements->forPlacement('tour_offers_bottom')->first();
+        $structuredData = $seo->detail($tour, $comparisonSources);
 
         return view('tours.show', compact(
             'tour',
@@ -123,6 +132,7 @@ class HomeController extends Controller
             'comparisonContactPhone',
             'comparisonContactHref',
             'relatedComparisons',
+            'structuredData',
         ));
     }
 }

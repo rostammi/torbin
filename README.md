@@ -42,12 +42,20 @@ php artisan serve
 
 Every successful crawl (including an unavailable result with price zero) creates a price-history snapshot. The tour page displays up to 30 recent snapshots per provider. Ratings are only labelled as user ratings when the provider returns a review score; hotel classification is stored and displayed separately as hotel stars.
 
-Provider-page content is checked during price crawls and by the daily `content:crawl` command. Relevant headings are deduplicated and compiled into a source-attributed travel guide without republishing source paragraphs. Ensure Laravel's scheduler is running in production:
+Provider-page content is checked during price crawls and by the daily `content:crawl` command. Relevant headings are deduplicated and compiled into a source-attributed travel guide without republishing source paragraphs. On a server with persistent processes, keep Laravel's scheduler and the default queue worker running:
 
 ```bash
 php artisan schedule:work
 php artisan queue:work --timeout=1800
 ```
+
+On shared hosting, synchronization-center actions use the dedicated database queue named `sync`. Add this single cron entry, replacing the PHP binary and project path with the values from the hosting control panel:
+
+```cron
+*/5 * * * * cd /home/USER/geyt && /usr/local/bin/php artisan sync:work >> storage/logs/sync-cron.log 2>&1
+```
+
+The command starts at most five minutes after an administrator queues an action, automatically queues the daily price refresh after `DAILY_PRICE_REFRESH_AT` (03:00 by default), processes the `sync` queue until it is empty, and then exits. Keep `QUEUE_CONNECTION=database` and run `php artisan migrate --force` during deployment so the queue tables exist. No separate scheduler cron is required on shared hosting.
 
 The image crawler uses PHP GD when available and otherwise uses `ffmpeg` to upscale and center-crop the largest undersized Wikimedia image. Keep one of these image processors installed on every queue-worker host.
 
@@ -55,7 +63,42 @@ The image crawler uses PHP GD when available and otherwise uses `ffmpeg` to upsc
 
 Admins can refresh at least 100 demand-ranked tour suggestions from **Admin → Tour suggestions**. Discovery combines Google Trends, searches with no result on the site, and the configured destination catalog. Creating a suggestion queues SEO page creation, attaches 4–10 configured providers, crawls their structured price/rating data, compiles provider content, and then publishes the tour.
 
-**Admin → Synchronization** centralizes tour discovery, price/rating refresh, content refresh, and full synchronization with run history. Discovery runs daily at 01:30, prices hourly, and provider content daily at 02:30. Keep both the scheduler and queue worker above running in production. Provider definitions and the Google Trends geography/feed can be customized in `config/crawler.php` or with `GOOGLE_TRENDS_GEO`, `GOOGLE_TRENDS_FEED_URL`, and `TOUR_SUGGESTIONS_LIMIT`.
+**Admin → Synchronization** centralizes tour discovery, price/rating refresh, content refresh, and full synchronization with run history. Discovery runs daily at 01:30, prices run once daily through the `sync` queue, and provider content runs daily at 02:30. Provider definitions and schedule settings can be customized in `config/crawler.php` or with `DAILY_PRICE_REFRESH_AT`, `GOOGLE_TRENDS_GEO`, `GOOGLE_TRENDS_FEED_URL`, and `TOUR_SUGGESTIONS_LIMIT`.
+
+## SEO launch migration
+
+Old `geyt.ir` detail URLs are stored in `legacy_redirects` and permanently redirect to the current canonical URL of their linked comparison page. Because the destination is linked by page ID, later slug changes do not break the migration map. Before launch:
+
+While the old site is still publicly available, keep `GEYT_REFERENCE_LIVE_DISCOVERY=true` and capture its exact URLs:
+
+```bash
+php artisan tours:discover
+php artisan seo:audit-migration
+```
+
+Resolve all unmatched URLs in the admin panel before switching the site. After cutover, set `GEYT_REFERENCE_LIVE_DISCOVERY=false` so the new site is not scanned as though it were the legacy source. Production settings and deployment commands are:
+
+```dotenv
+APP_URL=https://geyt.ir
+APP_ENV=production
+APP_DEBUG=false
+GEYT_REFERENCE_LIVE_DISCOVERY=false
+```
+
+```bash
+php artisan migrate --force
+php artisan seo:audit-migration
+```
+
+Open **Admin → Content & Revenue → SEO Redirects**, resolve every unmatched URL, and run the audit again until it exits successfully. The launch checklist is:
+
+1. Crawl a sample of old URLs and verify one-hop `301` responses to relevant new pages; do not redirect unrelated removed pages to the home page.
+2. Verify `https://geyt.ir/sitemap.xml` and submit it in Google Search Console.
+3. Keep all old URL redirects for at least one year, preferably indefinitely.
+4. Preserve Search Console verification and analytics tags, update internal/profile/campaign links, and monitor 404s, indexing, crawl load, and traffic after launch.
+5. Test JSON-LD with Google's Rich Results Test and inspect representative tour, hotel, accommodation, visa, category, magazine, and provider URLs.
+
+The new site serves self-referencing canonicals, an XML sitemap containing only published canonical pages, crawler rules in `public/robots.txt`, structured data matching visible content, and true `404` responses for old pages without a relevant replacement.
 
 ## Price-drop SMS alerts
 

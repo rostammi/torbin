@@ -3,12 +3,15 @@
 namespace App\Services\Discovery;
 
 use App\Models\TourSuggestion;
+use App\Services\Seo\LegacyRedirectSynchronizer;
 use DOMDocument;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
 class GeytReferenceCatalogDiscovery
 {
+    public function __construct(private readonly LegacyRedirectSynchronizer $redirects) {}
+
     public function discover(?string $onlyCategory = null): array
     {
         abort_unless($onlyCategory === null || array_key_exists($onlyCategory, config('comparison.categories')), 404);
@@ -72,6 +75,8 @@ class GeytReferenceCatalogDiscovery
                 $summary[$key] += $categorySummary[$key];
             }
         }
+
+        $summary['redirects'] = $this->redirects->sync();
 
         return $summary;
     }

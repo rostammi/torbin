@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'داشبورد عملکرد تورها')
+@section('title', 'داشبورد عملکرد پیشنهادها')
 
 @section('content')
     <section class="container admin-page">
@@ -27,7 +27,7 @@
         </div>
 
         <div class="dashboard-kpis">
-            <article class="panel"><span>نمایش صفحات تور</span><strong>{{ number_format($viewsTotal) }}</strong></article>
+            <article class="panel"><span>نمایش صفحات پیشنهاد</span><strong>{{ number_format($viewsTotal) }}</strong></article>
             <article class="panel"><span>کلیک خروجی موفق</span><strong>{{ number_format($clicksTotal) }}</strong></article>
             <article class="panel"><span>نرخ تبدیل کلیک</span><strong>{{ number_format($conversionTotal, 2) }}٪</strong></article>
             <article class="panel"><span>هزینه کلیک‌ها</span><strong>{{ number_format($costTotal) }} <small>تومان</small></strong></article>
@@ -35,7 +35,7 @@
 
         <div class="panel table-wrap dashboard-table">
             <table>
-                <thead><tr><th>تور</th><th>کمترین قیمت سایت</th><th>قیمت آژانس</th><th>فاصله با کمترین قیمت</th><th>نمایش صفحه</th><th>کلیک خرید</th><th>کانورژن</th><th>هزینه برای آژانس</th></tr></thead>
+                <thead><tr><th>پیشنهاد</th><th>کمترین قیمت سایت</th><th>قیمت آژانس</th><th>فاصله با کمترین قیمت</th><th>نمایش صفحه</th><th>کلیک خرید</th><th>کانورژن</th><th>هزینه برای آژانس</th></tr></thead>
                 <tbody>
                     @forelse($tours as $tour)
                         @php
@@ -79,16 +79,17 @@
                             <td>{{ number_format($tour->click_cost ?? 0) }} تومان</td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="empty-cell">هنوز توری برای نمایش در این داشبورد وجود ندارد.</td></tr>
+                        <tr><td colspan="8" class="empty-cell">هنوز پیشنهادی برای نمایش در این داشبورد وجود ندارد.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        {{ $tours->links('pagination.admin') }}
 
         @if(auth()->user()->isAdmin())
             <section class="potential-keywords">
                 <div class="subsection-head">
-                    <div><span class="eyebrow">فرصت توسعه محصول</span><h2>کیوردهای دارای پتانسیل اجرای تور</h2></div>
+                    <div><span class="eyebrow">فرصت توسعه محصول</span><h2>کیوردهای دارای پتانسیل ساخت پیشنهاد</h2></div>
                     <span class="muted">جست‌وجوهایی که هیچ نتیجه‌ای نداشته‌اند</span>
                 </div>
                 <div class="panel table-wrap">

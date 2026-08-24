@@ -39,7 +39,7 @@
                             <a href="{{ route('admin.tours.edit', $tour) }}">ویرایش</a>
                             <form method="post" action="{{ route('admin.tours.crawl', $tour) }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='در حال بررسی…'">@csrf<button>به‌روزرسانی قیمت</button></form>
                             <form method="post" action="{{ route('admin.tours.add-images', $tour) }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='در صف…'">@csrf<button @class(['missing-image-button' => ! $firstImage])>افزودن ۳ عکس</button></form>
-                            <form method="post" action="{{ route('admin.tours.destroy', $tour) }}" onsubmit="return confirm('این تور حذف شود؟')">@csrf @method('DELETE')<button class="danger-link">حذف</button></form>
+                            <form method="post" action="{{ route('admin.tours.destroy', $tour) }}" onsubmit="return confirm('این پیشنهاد حذف شود؟')">@csrf @method('DELETE')<button class="danger-link">حذف</button></form>
                         </td>
                     </tr>
                 @empty

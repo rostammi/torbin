@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnforceCanonicalPublicUrl;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\RedirectLegacyUrls;
 use App\Http\Middleware\SecureExternalLinks;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,7 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['admin.only' => EnsureUserIsAdmin::class]);
-        $middleware->web(append: [SecureExternalLinks::class]);
+        $middleware->web(
+            prepend: [RedirectLegacyUrls::class],
+            append: [SecureExternalLinks::class, EnforceCanonicalPublicUrl::class],
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

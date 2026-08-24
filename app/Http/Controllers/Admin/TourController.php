@@ -72,7 +72,7 @@ class TourController extends Controller
         Storage::disk('public')->delete($tour->gallery ?? []);
         $tour->delete();
 
-        return redirect()->route('admin.tours.index')->with('success', 'تور حذف شد.');
+        return redirect()->route('admin.tours.index')->with('success', 'پیشنهاد حذف شد.');
     }
 
     public function crawl(Tour $tour, TourPriceUpdater $updater, PriceAlertNotifier $alerts): RedirectResponse
@@ -91,7 +91,7 @@ class TourController extends Controller
 
         return back()->with(
             $result['target_met'] ? 'success' : 'error',
-            "قیمت این تور از {$result['primary_checked']} سایت اصلی{$fallback} بررسی شد؛ {$target}{$retained} و {$notified} هشدار ارسال شد."
+            "قیمت این پیشنهاد از {$result['primary_checked']} سایت اصلی{$fallback} بررسی شد؛ {$target}{$retained} و {$notified} هشدار ارسال شد."
         );
     }
 
@@ -113,7 +113,7 @@ class TourController extends Controller
             ->exists();
 
         if ($running) {
-            return back()->with('error', 'تعویض تصاویر این تور از قبل در صف یا در حال اجراست.');
+            return back()->with('error', 'تعویض تصاویر این پیشنهاد از قبل در صف یا در حال اجراست.');
         }
 
         $run = SyncRun::create([
@@ -151,7 +151,7 @@ class TourController extends Controller
             ->exists();
 
         if ($running) {
-            return back()->with('error', 'عملیات تصاویر این تور از قبل در صف یا در حال اجراست.');
+            return back()->with('error', 'عملیات تصاویر این پیشنهاد از قبل در صف یا در حال اجراست.');
         }
 
         $run = SyncRun::create([
@@ -188,7 +188,7 @@ class TourController extends Controller
 
         $uploaded = $images->prependUploads($tour, $data['images']);
 
-        return back()->with('success', count($uploaded).' تصویر دستی اضافه شد؛ نخستین تصویر آپلودشده عکس اول تور است.');
+        return back()->with('success', count($uploaded).' تصویر دستی اضافه شد؛ نخستین تصویر آپلودشده عکس اول پیشنهاد است.');
     }
 
     public function reorderImages(Request $request, Tour $tour, TourImageManager $images): RedirectResponse

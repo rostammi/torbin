@@ -7,6 +7,13 @@ return [
     'trends_geo' => env('GOOGLE_TRENDS_GEO', 'IR'),
     'trends_feed_url' => env('GOOGLE_TRENDS_FEED_URL', 'https://trends.google.com/trending/rss'),
     'suggestions_limit' => (int) env('TOUR_SUGGESTIONS_LIMIT', 120),
+    'daily_price_refresh_at' => env('DAILY_PRICE_REFRESH_AT', '03:00'),
+    'dollar' => [
+        'url' => env('DOLLAR_RATE_URL', 'https://www.tgju.org/profile/price_dollar_rl'),
+        'cache_minutes' => (int) env('DOLLAR_RATE_CACHE_MINUTES', 10),
+        'stale_days' => (int) env('DOLLAR_RATE_STALE_DAYS', 1),
+        'timeout' => (int) env('DOLLAR_RATE_TIMEOUT', 12),
+    ],
     'images' => [
         'api_url' => env('TOUR_IMAGE_API_URL', 'https://commons.wikimedia.org/w/api.php'),
         'count' => (int) env('TOUR_IMAGE_COUNT', 4),

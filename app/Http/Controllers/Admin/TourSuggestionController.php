@@ -91,13 +91,13 @@ class TourSuggestionController extends Controller
                     ->with('success', 'صفحه مقایسه همراه با ارائه‌دهنده‌ها، قیمت، محتوا و تصاویر ساخته شد.');
             }
 
-            return back()->with('success', 'ساخت تور در صف قرار گرفت؛ نتیجه را در مرکز همگام‌سازی ببینید.');
+            return back()->with('success', 'ساخت پیشنهاد در صف قرار گرفت؛ نتیجه را در مرکز همگام‌سازی ببینید.');
         } catch (Throwable $exception) {
             $suggestion->update(['status' => 'failed']);
             $run->update(['status' => 'failed', 'failed' => 1, 'error' => $exception->getMessage(), 'finished_at' => now()]);
             report($exception);
 
-            return back()->with('error', 'ساخت خودکار تور ناموفق بود: '.$exception->getMessage());
+            return back()->with('error', 'ساخت خودکار پیشنهاد ناموفق بود: '.$exception->getMessage());
         }
     }
 

@@ -4,16 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\AddTourImages;
-use App\Jobs\CrawlMissingTourImages;
 use App\Jobs\ProvisionAllSuggestedTours;
 use App\Jobs\ProvisionSuggestedTour;
 use App\Jobs\RefreshTourImages;
-use App\Jobs\RunAutomationSync;
 use App\Jobs\ScanComparisonSource;
 use App\Models\PriceSource;
 use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Models\TourSuggestion;
+use App\Services\SyncCenterJobDispatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -44,7 +43,7 @@ class SyncController extends Controller
         return view('admin.sync.index', compact('runs', 'stats'));
     }
 
-    public function run(Request $request): RedirectResponse
+    public function run(Request $request, SyncCenterJobDispatcher $dispatcher): RedirectResponse
     {
         $data = $request->validate(['type' => ['required', Rule::in([
             'discover_tours', 'discover_hotels', 'discover_stays', 'discover_visas',
@@ -71,11 +70,7 @@ class SyncController extends Controller
         }
 
         $run = SyncRun::create(['user_id' => auth()->id(), 'type' => $data['type'], 'started_at' => now()]);
-        if ($isImageRun) {
-            CrawlMissingTourImages::dispatch($run->id, $imageCategories[$data['type']]);
-        } else {
-            RunAutomationSync::dispatch($run->id);
-        }
+        $dispatcher->dispatch($data['type'], $run->id);
 
         return back()->with('success', 'عملیات در صف اجرا قرار گرفت؛ وضعیت آن در جدول همین صفحه به‌روز می‌شود.');
     }
@@ -95,7 +90,7 @@ class SyncController extends Controller
         return back()->with('success', 'درخواست لغو ثبت شد؛ پردازش پس از پایان آیتم جاری متوقف می‌شود.');
     }
 
-    public function retry(SyncRun $syncRun): RedirectResponse
+    public function retry(SyncRun $syncRun, SyncCenterJobDispatcher $dispatcher): RedirectResponse
     {
         if (! $syncRun->canRetry()) {
             return back()->with('error', 'تلاش مجدد خودکار برای این نوع عملیات در دسترس نیست.');
@@ -112,11 +107,6 @@ class SyncController extends Controller
         ]);
 
         match ($syncRun->type) {
-            'images', 'images_tours', 'images_hotels', 'images_stays', 'images_visas' => CrawlMissingTourImages::dispatch(
-                $newRun->id,
-                $this->imageCategories()[$syncRun->type],
-                $failedOnly ? data_get($details, 'images.failed_tour_ids', []) : [],
-            ),
             'provision_all_tours' => ProvisionAllSuggestedTours::dispatch(
                 $newRun->id,
                 data_get($details, 'category'),
@@ -130,23 +120,16 @@ class SyncController extends Controller
             'scan_comparison_source' => ScanComparisonSource::dispatch((int) data_get($details, 'source_id'), $newRun->id),
             'add_tour_images' => AddTourImages::dispatch((int) data_get($details, 'tour_id'), $newRun->id),
             'refresh_tour_images' => RefreshTourImages::dispatch((int) data_get($details, 'tour_id'), $newRun->id),
-            default => RunAutomationSync::dispatch($newRun->id, $failedOnly ? $this->failedTargets($syncRun) : []),
+            default => $dispatcher->dispatch(
+                $syncRun->type,
+                $newRun->id,
+                $failedOnly ? $this->failedTargets($syncRun) : [],
+            ),
         };
 
         return back()->with('success', $failedOnly
             ? 'تلاش مجدد برای موارد ناموفق در صف قرار گرفت.'
             : 'عملیات برای تلاش مجدد در صف قرار گرفت.');
-    }
-
-    private function imageCategories(): array
-    {
-        return [
-            'images' => null,
-            'images_tours' => 'tour',
-            'images_hotels' => 'hotel',
-            'images_stays' => 'stay',
-            'images_visas' => 'visa',
-        ];
     }
 
     private function failedTargets(SyncRun $run): array

@@ -3,6 +3,7 @@
 @section('title', $tour->title . ' | مقایسه قیمت')
 @section('meta')
     <link rel="canonical" href="{{ $tour->publicUrl() }}">
+    <meta name="description" content="{{ trim($tour->excerpt ?: \Illuminate\Support\Str::limit(strip_tags($tour->description), 160)) }}">
     @if($tour->seo_keywords)<meta name="keywords" content="{{ implode(', ', $tour->seo_keywords) }}">@endif
 @endsection
 
@@ -67,7 +68,7 @@
 
             @if ($tour->video_url)
                 <div class="video-box">
-                    <h3>ویدئوی تور</h3>
+                    <h3>ویدئوی {{ $tour->categoryLabel() }}</h3>
                     <a class="button button-secondary" href="{{ $tour->video_url }}" target="_blank" rel="nofollow noopener">تماشای ویدئو ↗</a>
                 </div>
             @endif

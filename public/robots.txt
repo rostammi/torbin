@@ -1,2 +1,10 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin
+Disallow: /login
+Disallow: /search
+Disallow: /go/
+Disallow: /ads/
+Disallow: /price-alerts/
+
+Sitemap: https://geyt.ir/sitemap.xml

@@ -6,6 +6,12 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'گیت | مقایسه قیمت تور')</title>
     @yield('meta')
+    @if(request()->routeIs('admin.*', 'login'))
+        <meta name="robots" content="noindex, nofollow">
+    @elseif(request()->routeIs('search.*'))
+        <meta name="robots" content="noindex, follow">
+    @endif
+    @include('seo.structured-data', ['structuredData' => $structuredData ?? []])
     <link rel="preload" href="{{ asset('fonts/Vazirmatn.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 </head>
@@ -42,6 +48,7 @@
                                 <a class="{{ request()->routeIs('hotels.*') ? 'active' : '' }}" href="{{ route('hotels.index').'/' }}">هتل‌ها</a>
                                 <a class="{{ request()->routeIs('stays.*') ? 'active' : '' }}" href="{{ route('stays.index').'/' }}">اقامتگاه‌ها</a>
                                 <a class="{{ request()->routeIs('visas.*') ? 'active' : '' }}" href="{{ route('visas.index').'/' }}">ویزاها</a>
+                                <a class="{{ request()->routeIs('mag.*') ? 'active' : '' }}" href="{{ route('mag.index').'/' }}">مگ</a>
                             </div>
                         </details>
                         <details class="nav-menu {{ request()->routeIs('admin.tours.*', 'admin.comparison-sources.*', 'admin.agencies.*') ? 'active' : '' }}">
@@ -60,11 +67,12 @@
                                 <a class="{{ request()->routeIs('admin.contact-requests.*') ? 'active' : '' }}" href="{{ route('admin.contact-requests.index') }}">شماره‌ها و درخواست‌های تماس</a>
                             </div>
                         </details>
-                        <details class="nav-menu {{ request()->routeIs('admin.advertisements.*', 'admin.static-pages.*') ? 'active' : '' }}">
+                        <details class="nav-menu {{ request()->routeIs('admin.advertisements.*', 'admin.static-pages.*', 'admin.seo-redirects.*') ? 'active' : '' }}">
                             <summary>محتوا و درآمد</summary>
                             <div class="nav-dropdown">
                                 <a class="{{ request()->routeIs('admin.advertisements.*') ? 'active' : '' }}" href="{{ route('admin.advertisements.index') }}">تبلیغات</a>
                                 <a class="{{ request()->routeIs('admin.static-pages.*') ? 'active' : '' }}" href="{{ route('admin.static-pages.index') }}">صفحات ثابت</a>
+                                <a class="{{ request()->routeIs('admin.seo-redirects.*') ? 'active' : '' }}" href="{{ route('admin.seo-redirects.index') }}">ریدایرکت‌های SEO</a>
                             </div>
                         </details>
                     @else
@@ -72,6 +80,7 @@
                         <a href="{{ route('hotels.index').'/' }}">هتل‌ها</a>
                         <a href="{{ route('stays.index').'/' }}">اقامتگاه‌ها</a>
                         <a href="{{ route('visas.index').'/' }}">ویزا</a>
+                        <a href="{{ route('mag.index').'/' }}">مگ</a>
                         <a href="{{ route('admin.dashboard') }}">داشبورد</a>
                     @endif
                     <form action="{{ route('logout') }}" method="post" class="inline-form">
@@ -83,6 +92,7 @@
                     <a href="{{ route('hotels.index').'/' }}">هتل‌ها</a>
                     <a href="{{ route('stays.index').'/' }}">اقامتگاه‌ها</a>
                     <a href="{{ route('visas.index').'/' }}">ویزا</a>
+                    <a href="{{ route('mag.index').'/' }}">مگ</a>
                     <a href="{{ route('login') }}">ورود مدیر</a>
                 @endauth
             </nav>

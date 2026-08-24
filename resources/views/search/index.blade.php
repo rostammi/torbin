@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('title', $term ? 'نتایج جست‌وجوی '.$term : 'جست‌وجوی تور')
+@section('meta')
+    <meta name="description" content="جست‌وجو و مقایسه پیشنهادهای سفر در گیت.">
+@endsection
 
 @section('content')
     <section class="container admin-page search-page">

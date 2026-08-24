@@ -2,7 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\CrawlMissingTourImages;
+use App\Jobs\SyncCenter\DownloadMissingHotelImagesJob;
+use App\Jobs\SyncCenter\DownloadMissingTourImagesJob;
 use App\Models\SyncRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,8 +65,8 @@ class AdminSyncControlsTest extends TestCase
         $retry = SyncRun::query()->whereKeyNot($run->id)->sole();
         $this->assertSame($run->id, $retry->details['retry_of']);
         $this->assertFalse($retry->details['failed_only']);
-        Queue::assertPushed(CrawlMissingTourImages::class, fn (CrawlMissingTourImages $job) => $job->runId === $retry->id
-            && $job->category === 'hotel'
+        Queue::assertPushed(DownloadMissingHotelImagesJob::class, fn (DownloadMissingHotelImagesJob $job) => $job->runId === $retry->id
+            && $job->queue === 'sync'
             && $job->targetTourIds === []);
     }
 
@@ -97,8 +98,8 @@ class AdminSyncControlsTest extends TestCase
         $retry = SyncRun::query()->whereKeyNot($run->id)->sole();
         $this->assertSame(2, $retry->total);
         $this->assertTrue($retry->details['failed_only']);
-        Queue::assertPushed(CrawlMissingTourImages::class, fn (CrawlMissingTourImages $job) => $job->runId === $retry->id
-            && $job->category === 'tour'
+        Queue::assertPushed(DownloadMissingTourImagesJob::class, fn (DownloadMissingTourImagesJob $job) => $job->runId === $retry->id
+            && $job->queue === 'sync'
             && $job->targetTourIds === [17, 29]);
     }
 }

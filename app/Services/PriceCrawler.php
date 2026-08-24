@@ -13,6 +13,7 @@ use App\Services\Crawlers\Safar24Crawler;
 use App\Services\Crawlers\SafarmarketCrawler;
 use App\Services\Crawlers\SourceUrlResolver;
 use App\Services\Crawlers\StructuredDataCrawler;
+use App\Services\Currency\PriceCurrencyConverter;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Throwable;
@@ -29,6 +30,7 @@ class PriceCrawler
         private readonly SourceUrlResolver $sourceUrlResolver,
         private readonly WebsiteContentExtractor $contentExtractor,
         private readonly TourContentCompiler $contentCompiler,
+        private readonly PriceCurrencyConverter $currencyConverter,
     ) {}
 
     public function crawl(PriceSource $source, bool $deactivateOnFailure = false): bool
@@ -81,6 +83,7 @@ class PriceCrawler
         $source->update([
             'source_url' => $source->source_url,
             'latest_price' => $result->price,
+            'currency' => $result->currency ?: $source->currency,
             'latest_rating' => $result->rating,
             'latest_rating_count' => $result->ratingCount,
             'rating_type' => $result->ratingType,
@@ -173,12 +176,17 @@ class PriceCrawler
         $raw = $source->extraction_type === 'json'
             ? data_get($response->json(), $source->selector)
             : $this->extractByRegex($response->body(), (string) $source->selector);
-        $price = $this->normalizePrice($raw, (float) $source->price_multiplier);
-        if ($price < 1) {
+        $normalized = $this->currencyConverter->convert($raw, $source);
+        if ($normalized['price'] < 1) {
             throw new RuntimeException('قیمت معتبر در پاسخ پیدا نشد.');
         }
 
-        return new CrawlResult($price, $source->buy_url ?: $source->source_url);
+        return new CrawlResult(
+            $normalized['price'],
+            $source->buy_url ?: $source->source_url,
+            details: $normalized['details'],
+            currency: $normalized['currency'],
+        );
     }
 
     private function extractByRegex(string $body, string $pattern): mixed
@@ -188,22 +196,6 @@ class PriceCrawler
         }
 
         return $matches[1] ?? $matches[0];
-    }
-
-    private function normalizePrice(mixed $value, float $multiplier): int
-    {
-        if (! is_scalar($value)) {
-            throw new RuntimeException('مقدار استخراج‌شده عددی نیست.');
-        }
-
-        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-        $arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-        $latin = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-        $normalized = str_replace($persian, $latin, (string) $value);
-        $normalized = str_replace($arabic, $latin, $normalized);
-        $digits = preg_replace('/[^0-9]/', '', $normalized) ?? '';
-
-        return (int) round(((int) $digits) * $multiplier);
     }
 
     private function assertPublicUrl(string $url): void

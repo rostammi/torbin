@@ -6,7 +6,7 @@
     <section class="container admin-page">
         <div class="section-head">
             <div><span class="eyebrow">درآمد کلیکی</span><h1>آژانس‌ها و اعتبار</h1></div>
-            <a href="{{ route('admin.tours.index') }}">بازگشت به تورها</a>
+            <a href="{{ route('admin.tours.index') }}">بازگشت به پیشنهادها</a>
         </div>
 
         @if($errors->any())

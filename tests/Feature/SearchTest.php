@@ -87,7 +87,7 @@ class SearchTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('admin.dashboard', ['period' => 'all']))
             ->assertOk()
-            ->assertSee('کیوردهای دارای پتانسیل اجرای تور')
+            ->assertSee('کیوردهای دارای پتانسیل ساخت پیشنهاد')
             ->assertSee('تور مریخ')
             ->assertSeeInOrder(['تور مریخ', '2', '2']);
     }

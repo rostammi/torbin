@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('title', $categoryConfig ? 'مقایسه قیمت '.$categoryConfig['plural'].' | گیت' : 'گیت | مقایسه خدمات سفر')
+@section('meta')
+    <link rel="canonical" href="{{ $categoryConfig ? $canonicalUrl : url('/') }}">
+    <meta name="description" content="{{ $categoryConfig ? 'مقایسه قیمت و پیشنهادهای '.$categoryConfig['plural'].' از ارائه‌دهندگان معتبر در گیت.' : 'مقایسه قیمت تور، هتل، اقامتگاه و خدمات ویزا از ارائه‌دهندگان معتبر در گیت.' }}">
+@endsection
 
 @section('content')
     <section class="hero">

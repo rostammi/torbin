@@ -11,5 +11,6 @@ final readonly class CrawlResult
         public ?int $ratingCount = null,
         public ?string $ratingType = null,
         public array $details = [],
+        public ?string $currency = null,
     ) {}
 }

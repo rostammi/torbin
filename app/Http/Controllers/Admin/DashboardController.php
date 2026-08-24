@@ -31,6 +31,8 @@ class DashboardController extends Controller
             $tourQuery->whereHas('priceSources', fn ($query) => $query->where('agency_id', $agencyId));
         }
 
+        $tourIds = (clone $tourQuery)->pluck('tours.id');
+
         $tourQuery->withMin([
             'priceSources as public_minimum_price' => fn ($query) => $query
                 ->where('is_active', true)
@@ -61,9 +63,9 @@ class DashboardController extends Controller
                 }
                 $this->withinPeriod($query, 'clicked_at', $since);
             }], 'charged_amount')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
-        $tourIds = $tours->pluck('id');
         $viewsTotal = TourPageView::query()->whereIn('tour_id', $tourIds)
             ->when($since, fn ($query) => $query->where('viewed_at', '>=', $since))->count();
         $clicksQuery = OutboundClick::query()->whereIn('tour_id', $tourIds)->whereIn('status', ['charged', 'free'])

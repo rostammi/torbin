@@ -31,6 +31,7 @@ class ProviderCatalog
             'selector' => $destination,
             'price_multiplier' => 1,
             'currency' => 'تومان',
+            'source_currency' => $provider['source_currency'] ?? 'auto',
             'is_active' => true,
         ]);
     }

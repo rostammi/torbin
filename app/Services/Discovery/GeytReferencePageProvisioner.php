@@ -4,6 +4,7 @@ namespace App\Services\Discovery;
 
 use App\Models\Tour;
 use App\Models\TourSuggestion;
+use App\Services\Seo\LegacyRedirectSynchronizer;
 use App\Services\TourSlugGenerator;
 use Illuminate\Support\Facades\DB;
 
@@ -12,6 +13,7 @@ class GeytReferencePageProvisioner
     public function __construct(
         private readonly ProviderCatalog $providers,
         private readonly TourSlugGenerator $slugGenerator,
+        private readonly LegacyRedirectSynchronizer $redirects,
     ) {}
 
     public function provision(?string $category = null): array
@@ -61,6 +63,8 @@ class GeytReferencePageProvisioner
             $summary[$result['created'] ? 'created' : 'linked']++;
             $summary['sources'] += $result['sources'];
         }
+
+        $summary['redirects'] = $this->redirects->sync();
 
         return $summary;
     }

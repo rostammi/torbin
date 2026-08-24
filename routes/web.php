@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AgencyController;
 use App\Http\Controllers\Admin\ComparisonSourceController;
 use App\Http\Controllers\Admin\ContactRequestController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LegacyRedirectController;
 use App\Http\Controllers\Admin\PriceSourceController;
 use App\Http\Controllers\Admin\StaticPageController as AdminStaticPageController;
 use App\Http\Controllers\Admin\SyncController;
@@ -17,10 +18,13 @@ use App\Http\Controllers\OutboundClickController;
 use App\Http\Controllers\PriceAlertController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\SeoController;
 use App\Http\Controllers\StaticPageController;
+use App\Models\StaticPage;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/category/tour', [HomeController::class, 'category'])->defaults('category_key', 'tour')->name('tours.index');
 Route::get('/category/hotel', [HomeController::class, 'category'])->defaults('category_key', 'hotel')->name('hotels.index');
 Route::get('/category/accommodation', [HomeController::class, 'category'])->defaults('category_key', 'stay')->name('stays.index');
@@ -28,8 +32,9 @@ Route::get('/category/visa', [HomeController::class, 'category'])->defaults('cat
 Route::get('/about-us', [StaticPageController::class, 'show'])->defaults('slug', 'about-us')->name('pages.about');
 Route::get('/contact-us', [StaticPageController::class, 'show'])->defaults('slug', 'contact-us')->name('pages.contact');
 Route::get('/faq', [StaticPageController::class, 'show'])->defaults('slug', 'faq')->name('pages.faq');
+Route::get('/mag', [StaticPageController::class, 'index'])->name('mag.index');
 Route::prefix('mag')->name('mag.')->group(function () {
-    foreach (\App\Models\StaticPage::MAG_SLUGS as $slug) {
+    foreach (StaticPage::MAG_SLUGS as $slug) {
         Route::get($slug, [StaticPageController::class, 'show'])
             ->defaults('slug', $slug)
             ->name($slug);
@@ -65,6 +70,10 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
         Route::resource('tours', AdminTourController::class)->except('show');
         Route::resource('advertisements', AdvertisementController::class)->except('show');
         Route::resource('static-pages', AdminStaticPageController::class)->only(['index', 'edit', 'update']);
+        Route::get('seo-redirects', [LegacyRedirectController::class, 'index'])->name('seo-redirects.index');
+        Route::post('seo-redirects', [LegacyRedirectController::class, 'store'])->name('seo-redirects.store');
+        Route::put('seo-redirects/{legacyRedirect}', [LegacyRedirectController::class, 'update'])->name('seo-redirects.update');
+        Route::post('seo-redirects/sync', [LegacyRedirectController::class, 'sync'])->name('seo-redirects.sync');
         Route::post('comparison-sources/{comparison_source}/scan', [ComparisonSourceController::class, 'scan'])->name('comparison-sources.scan');
         Route::resource('comparison-sources', ComparisonSourceController::class)->except('show');
         Route::get('suggestions', [TourSuggestionController::class, 'index'])->name('suggestions.index');

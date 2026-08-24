@@ -2,7 +2,8 @@
 
 @section('title', $page->title.' | گیت')
 @section('meta')
-    <link rel="canonical" href="{{ url()->current() }}">
+    <link rel="canonical" href="{{ $page->publicUrl() }}">
+    <meta name="description" content="{{ \Illuminate\Support\Str::limit(trim(strip_tags($page->content)), 160) }}">
 @endsection
 
 @section('content')
