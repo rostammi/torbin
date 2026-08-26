@@ -28,11 +28,11 @@
         </div>
 
         <nav class="provider-category-tabs" aria-label="دسته‌بندی پیشنهادهای ارائه‌دهنده">
-            <a class="{{ $category === '' ? 'active' : '' }}" href="{{ route('providers.show', $provider) }}">
+            <a class="{{ $category === '' ? 'active' : '' }}" href="{{ route('providers.show', $provider).'/' }}">
                 <span>همه</span><b>{{ number_format($categoryCounts->sum()) }}</b>
             </a>
             @foreach($categories as $key => $config)
-                <a class="{{ $category === $key ? 'active' : '' }}" href="{{ route('providers.show', [$provider, 'category' => $key]) }}">
+                <a class="{{ $category === $key ? 'active' : '' }}" href="{{ route('providers.show', $provider).'/?'.http_build_query(['category' => $key]) }}">
                     <span>{{ $config['plural'] }}</span><b>{{ number_format($categoryCounts[$key]) }}</b>
                 </a>
             @endforeach

@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'گیت | مقایسه قیمت تور')</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('favicon.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
     @yield('meta')
     @if(request()->routeIs('admin.*', 'login'))
         <meta name="robots" content="noindex, nofollow">
@@ -12,8 +15,11 @@
         <meta name="robots" content="noindex, follow">
     @endif
     @include('seo.structured-data', ['structuredData' => $structuredData ?? []])
-    <link rel="preload" href="{{ asset('fonts/Vazirmatn.woff2') }}" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    @include('seo.critical-css')
+    <link rel="preload" href="{{ asset('fonts/Vazirmatn.woff2') }}" as="font" type="font/woff2" crossorigin fetchpriority="high">
+    <link rel="preload" href="{{ asset('css/app.css') }}" as="style" fetchpriority="high">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}" media="print" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="{{ asset('css/app.css') }}"></noscript>
 </head>
 <body>
     <header class="site-header">
@@ -21,7 +27,7 @@
             <div class="header-branding">
                 <a class="brand" href="{{ route('home') }}" aria-label="گیت؛ صفحه اصلی">
                     <span class="brand-logo-mark" aria-hidden="true">
-                        <img src="{{ asset('images/geyt-logo.png') }}" alt="" width="299" height="80">
+                        <img src="{{ asset('images/geyt-logo.png') }}" alt="لوگوی گیت؛ مرجع مقایسه خدمات سفر" width="299" height="80" loading="eager" decoding="async">
                     </span>
                     <span class="brand-copy">
                         <span class="brand-name"><span>گ</span>یت</span>
@@ -112,12 +118,26 @@
             <div>
                 <a class="footer-brand" href="{{ route('home') }}">گیت</a>
                 <p>مرجع جست‌وجو و مقایسه قیمت تور، هتل، اقامتگاه و خدمات ویزا</p>
+                <nav class="footer-social" aria-label="شبکه‌های اجتماعی گیت">
+                    <a class="social-link" href="https://www.linkedin.com/company/geyt/" target="_blank" rel="noopener noreferrer" aria-label="لینکدین گیت" title="لینکدین گیت">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path fill="currentColor" d="M6.5 8.25H3.25v12.5H6.5V8.25ZM4.88 3.25A1.88 1.88 0 1 0 4.88 7a1.88 1.88 0 0 0 0-3.75ZM9 8.25h3.12v1.7h.04c.44-.83 1.5-2.2 3.67-2.2 3.92 0 4.64 2.58 4.64 5.94v7.06h-3.25v-6.26c0-1.49-.03-3.41-2.08-3.41-2.08 0-2.4 1.63-2.4 3.3v6.37H9V8.25Z"/>
+                        </svg>
+                    </a>
+                    <a class="social-link" href="https://www.instagram.com/geyt.ir" target="_blank" rel="noopener noreferrer" aria-label="اینستاگرام گیت" title="اینستاگرام گیت">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/>
+                        </svg>
+                    </a>
+                </nav>
             </div>
             <div>
                 <strong>با گیت</strong>
-                <a href="{{ route('pages.about') }}">درباره ما</a>
-                <a href="{{ route('pages.contact') }}">تماس با ما</a>
-                <a href="{{ route('pages.faq') }}">سؤالات متداول</a>
+                <a href="{{ route('pages.about').'/' }}">درباره ما</a>
+                <a href="{{ route('pages.contact').'/' }}">تماس با ما</a>
+                <a href="{{ route('pages.faq').'/' }}">سؤالات متداول</a>
             </div>
             <div>
                 <strong>دسته‌بندی‌ها</strong>
@@ -137,14 +157,14 @@
                     <a class="license-badge" href="https://trustseal.enamad.ir/?id=522515&amp;Code=1b3swSGBmJiCpB9APi3D7QOz5GOSJKC2" target="_blank" rel="noopener noreferrer" referrerpolicy="origin" aria-label="استعلام نماد اعتماد الکترونیکی گیت">
                         <span class="license-logo">
                             <span class="license-placeholder" aria-hidden="true">اینماد</span>
-                            <img src="https://trustseal.enamad.ir/logo.aspx?id=522515&amp;Code=1b3swSGBmJiCpB9APi3D7QOz5GOSJKC2" alt="نماد اعتماد الکترونیکی گیت" loading="lazy" referrerpolicy="origin" onerror="this.hidden=true">
+                            <img src="https://trustseal.enamad.ir/logo.aspx?id=522515&amp;Code=1b3swSGBmJiCpB9APi3D7QOz5GOSJKC2" alt="نماد اعتماد الکترونیکی گیت" width="60" height="64" loading="lazy" fetchpriority="low" decoding="async" referrerpolicy="origin" onerror="this.hidden=true">
                         </span>
                         <small>نماد اعتماد الکترونیکی</small>
                     </a>
                     <a class="license-badge" href="https://logo.samandehi.ir/Verify.aspx?id=371533&amp;p=xlaojyoerfthdshwxlaoxlao" target="_blank" rel="noopener noreferrer" referrerpolicy="origin" aria-label="استعلام نشان ساماندهی گیت">
                         <span class="license-logo">
                             <span class="license-placeholder" aria-hidden="true">ساماندهی</span>
-                            <img id="rgvjjzpejxlzapfurgvjrgvj" src="https://logo.samandehi.ir/logo.aspx?id=371533&amp;p=qftiyndtnbpdujynqftiqfti" alt="نشان ساماندهی گیت" loading="lazy" referrerpolicy="origin" onerror="this.hidden=true">
+                            <img id="rgvjjzpejxlzapfurgvjrgvj" src="https://logo.samandehi.ir/logo.aspx?id=371533&amp;p=qftiyndtnbpdujynqftiqfti" alt="نشان ساماندهی گیت" width="60" height="64" loading="lazy" fetchpriority="low" decoding="async" referrerpolicy="origin" onerror="this.hidden=true">
                         </span>
                         <small>نشان ساماندهی</small>
                     </a>

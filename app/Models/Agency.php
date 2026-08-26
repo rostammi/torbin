@@ -72,7 +72,7 @@ class Agency extends Model
 
     public function publicUrl(): string
     {
-        return route('providers.show', $this->providerSlug());
+        return rtrim(route('providers.show', $this->providerSlug()), '/').'/';
     }
 
     public function canAffordClick(): bool

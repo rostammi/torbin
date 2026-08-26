@@ -8,11 +8,55 @@ use App\Models\TourSuggestion;
 use App\Models\User;
 use App\Services\Seo\LegacyRedirectSynchronizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class SeoMigrationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_www_host_redirects_directly_to_apex_canonical_url(): void
+    {
+        config(['app.url' => 'https://geyt.ir']);
+        URL::forceRootUrl('https://geyt.ir');
+        URL::forceScheme('https');
+
+        $this->withServerVariables([
+            'HTTP_HOST' => 'www.geyt.ir',
+            'HTTPS' => 'on',
+            'SERVER_PORT' => 443,
+        ])->get('/faq?ref=www')
+            ->assertStatus(301)
+            ->assertRedirect('https://geyt.ir/faq/?ref=www');
+    }
+
+    public function test_http_redirects_directly_to_https_canonical_url(): void
+    {
+        config(['app.url' => 'https://geyt.ir']);
+        URL::forceRootUrl('https://geyt.ir');
+        URL::forceScheme('https');
+
+        $this->withServerVariables([
+            'HTTP_HOST' => 'geyt.ir',
+            'HTTPS' => 'off',
+            'SERVER_PORT' => 80,
+        ])->get('/category/hotel?ref=http')
+            ->assertStatus(301)
+            ->assertRedirect('https://geyt.ir/category/hotel/?ref=http');
+
+        $secureServer = [
+            'HTTP_HOST' => 'geyt.ir',
+            'HTTPS' => 'on',
+            'SERVER_PORT' => 443,
+        ];
+        $this->withServerVariables($secureServer)->get('/')
+            ->assertOk()
+            ->assertSee('<link rel="canonical" href="https://geyt.ir">', false);
+        $this->withServerVariables($secureServer)->get('/faq/')
+            ->assertOk()
+            ->assertSee('<link rel="canonical" href="https://geyt.ir/faq/">', false);
+    }
 
     public function test_old_geyt_detail_url_redirects_directly_to_the_current_canonical_url(): void
     {
@@ -144,6 +188,8 @@ class SeoMigrationTest extends TestCase
             'title' => 'اقامتگاه ماسال',
             'slug' => 'masal-stay-seo',
             'description' => '...',
+            'cover_image' => 'tours/covers/masal-main.jpg',
+            'gallery' => ['tours/gallery/masal-second.jpg'],
             'is_active' => true,
         ]);
         $draft = Tour::create([
@@ -159,6 +205,9 @@ class SeoMigrationTest extends TestCase
             ->assertSee('<?xml version="1.0" encoding="UTF-8"?>', false)
             ->assertSee('<loc>'.$published->publicUrl().'</loc>', false)
             ->assertSee('<loc>'.route('stays.index').'/'.'</loc>', false)
+            ->assertSee('xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"', false)
+            ->assertSee('<image:loc>'.url(Storage::url($published->cover_image)).'</image:loc>', false)
+            ->assertDontSee('masal-second.jpg')
             ->assertDontSee($draft->publicUrl());
 
         $this->assertNotFalse(simplexml_load_string($response->getContent()));
@@ -171,6 +220,16 @@ class SeoMigrationTest extends TestCase
             'slug' => 'shiraz-structured-data',
             'excerpt' => 'مقایسه قیمت تور شیراز',
             'description' => 'جزئیات کامل سفر',
+            'cover_image' => 'tours/covers/shiraz-lcp.jpg',
+            'is_active' => true,
+        ]);
+        $tour->priceSources()->create([
+            'provider_name' => 'آژانس نمونه',
+            'source_url' => 'https://example.com/shiraz-tour',
+            'buy_url' => 'https://example.com/shiraz-tour',
+            'extraction_type' => 'manual',
+            'latest_price' => 5_000_000,
+            'currency' => 'تومان',
             'is_active' => true,
         ]);
 
@@ -178,13 +237,22 @@ class SeoMigrationTest extends TestCase
             ->assertOk()
             ->assertSee('"@type":"Organization"', false)
             ->assertSee('"@type":"WebSite"', false)
+            ->assertSee('rel="preload" href="'.asset('css/app.css').'" as="style"', false)
+            ->assertSee('rel="stylesheet" href="'.asset('css/app.css').'" media="print"', false)
+            ->assertSee('<noscript><link rel="stylesheet" href="'.asset('css/app.css').'"', false)
             ->assertSee('<link rel="canonical" href="'.url('/').'">', false);
 
         $detail = $this->get($tour->publicUrl())
             ->assertOk()
             ->assertSee('<link rel="canonical" href="'.$tour->publicUrl().'">', false)
+            ->assertSee('<link rel="preload" as="image" href="'.Storage::url($tour->cover_image).'" fetchpriority="high">', false)
+            ->assertSee('loading="eager" fetchpriority="high" decoding="async"', false)
             ->assertSee('<meta name="description" content="مقایسه قیمت تور شیراز">', false)
             ->assertSee('"@type":"TouristTrip"', false)
+            ->assertSee('"@type":"AggregateOffer"', false)
+            ->assertSee('"price":"50000000"', false)
+            ->assertSee('"priceCurrency":"IRR"', false)
+            ->assertSee('"@type":"TravelAgency"', false)
             ->assertSee('"@type":"BreadcrumbList"', false)
             ->assertSee('"url":"'.$tour->publicUrl().'"', false);
 

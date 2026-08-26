@@ -5,7 +5,7 @@
             <div class="ad-slider-track">
                 @foreach($advertisements as $advertisement)
                     <a class="ad-slide {{ $loop->first ? 'is-active' : '' }}" href="{{ route('advertisements.click', $advertisement) }}" target="_blank" rel="nofollow sponsored noopener">
-                        @if($advertisement->image_url)<img src="{{ $advertisement->image_url }}" alt="{{ $advertisement->title ?: $advertisement->advertiser_name }}">@endif
+                        @if($advertisement->image_url)<img src="{{ $advertisement->image_url }}" alt="{{ $advertisement->title ?: $advertisement->advertiser_name }}" width="1280" height="720" loading="{{ $loop->first ? 'eager' : 'lazy' }}" @if(! $loop->first)fetchpriority="low"@endif decoding="async">@endif
                         <div>
                             <small>{{ $advertisement->advertiser_name }}</small>
                             <strong>{{ $advertisement->title ?: $advertisement->name }}</strong>

@@ -13,7 +13,7 @@
             <h1>{{ $page->title }}</h1>
         </div>
         <article class="panel static-page-content">
-            {!! $page->content !!}
+            {!! $page->contentWithImageAlts() !!}
         </article>
     </section>
 @endsection

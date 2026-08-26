@@ -2,7 +2,7 @@
     <a href="{{ route('advertisements.click', $advertisement) }}" target="_blank" rel="nofollow sponsored noopener">
         <div class="ad-result-image">
             @if($advertisement->image_url)
-                <img src="{{ $advertisement->image_url }}" alt="{{ $advertisement->title ?: $advertisement->advertiser_name }}">
+                <img src="{{ $advertisement->image_url }}" alt="{{ $advertisement->title ?: $advertisement->advertiser_name }}" width="1280" height="720" loading="lazy" fetchpriority="low" decoding="async">
             @else
                 <span>✈</span>
             @endif

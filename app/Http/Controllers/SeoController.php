@@ -7,6 +7,7 @@ use App\Models\StaticPage;
 use App\Models\Tour;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class SeoController extends Controller
 {
@@ -24,6 +25,7 @@ class SeoController extends Controller
         $urls = $urls->concat(Tour::query()->published()->get()->map(fn (Tour $tour) => [
             'loc' => $tour->publicUrl(),
             'lastmod' => $tour->updated_at?->toAtomString(),
+            'image' => $this->comparisonImageUrl($tour),
         ]));
         $urls = $urls->concat(StaticPage::query()->where('is_published', true)->get()->map(fn (StaticPage $page) => [
             'loc' => $page->publicUrl(),
@@ -34,6 +36,13 @@ class SeoController extends Controller
         return response()
             ->view('seo.sitemap', ['urls' => $urls->unique('loc')->values()])
             ->header('Content-Type', 'application/xml; charset=UTF-8');
+    }
+
+    private function comparisonImageUrl(Tour $tour): ?string
+    {
+        $image = $tour->cover_image ?: data_get($tour->gallery, 0);
+
+        return $image ? url(Storage::url($image)) : null;
     }
 
     private function providerUrls(): Collection

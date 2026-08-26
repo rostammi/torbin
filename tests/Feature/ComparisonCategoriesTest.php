@@ -90,7 +90,14 @@ class ComparisonCategoriesTest extends TestCase
             ]);
 
             $this->assertSame(url($baseUrl.$tour->slug).'/', $tour->publicUrl());
-            $this->get($tour->publicUrl())->assertOk();
+            $response = $this->get($tour->publicUrl())->assertOk();
+            if ($category === 'tour') {
+                $response->assertSee('"@type":"TouristTrip"', false);
+            } else {
+                $response
+                    ->assertSee('"@type":"Service"', false)
+                    ->assertSee('"serviceType":', false);
+            }
             $this->get($legacyBaseUrl.$tour->slug)->assertNotFound();
         }
     }

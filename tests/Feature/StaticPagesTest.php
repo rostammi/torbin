@@ -13,6 +13,10 @@ class StaticPagesTest extends TestCase
 
     public function test_seeded_static_pages_are_public_and_linked_from_footer(): void
     {
+        $this->assertSame(url('/about-us').'/', StaticPage::where('slug', 'about-us')->sole()->publicUrl());
+        $this->assertSame(url('/contact-us').'/', StaticPage::where('slug', 'contact-us')->sole()->publicUrl());
+        $this->assertSame(url('/faq').'/', StaticPage::where('slug', 'faq')->sole()->publicUrl());
+
         $this->get(route('pages.about'))
             ->assertOk()
             ->assertSee('گیت فروشگاه اینترنتی نیست')
@@ -23,7 +27,10 @@ class StaticPagesTest extends TestCase
             ->assertSee('info@geyt.ir');
         $this->get(route('pages.faq'))
             ->assertOk()
-            ->assertSee('آیا استفاده از گیت هزینه دارد؟');
+            ->assertSee('آیا استفاده از گیت هزینه دارد؟')
+            ->assertSee('"@type":"FAQPage"', false)
+            ->assertSee('"@type":"Question"', false)
+            ->assertSee('"@type":"Answer"', false);
 
         $this->get(route('home'))
             ->assertOk()
@@ -67,7 +74,8 @@ class StaticPagesTest extends TestCase
             $this->get('/mag/'.$slug.'/')
                 ->assertOk()
                 ->assertSee($title)
-                ->assertSee('/images/mag/'.$image, false);
+                ->assertSee('/images/mag/'.$image, false)
+                ->assertSee('"@type":"BlogPosting"', false);
         }
     }
 
@@ -85,6 +93,22 @@ class StaticPagesTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('href="'.route('mag.index').'/'.'">مگ</a>', false);
+    }
+
+    public function test_public_static_pages_add_meaningful_alt_text_to_content_images(): void
+    {
+        $page = StaticPage::where('slug', 'about-us')->sole();
+        $page->update([
+            'title' => 'درباره گیت',
+            'content' => '<img src="/missing-alt.jpg"><img src="/empty-alt.jpg" alt=""><img src="/custom-alt.jpg" alt="متن اختصاصی">',
+            'is_published' => true,
+        ]);
+
+        $this->get(route('pages.about'))
+            ->assertOk()
+            ->assertSee('src="/missing-alt.jpg" alt="تصویر مرتبط با درباره گیت"', false)
+            ->assertSee('src="/empty-alt.jpg" alt="تصویر مرتبط با درباره گیت"', false)
+            ->assertSee('src="/custom-alt.jpg" alt="متن اختصاصی"', false);
     }
 
     public function test_mag_pages_are_visible_in_static_page_management(): void

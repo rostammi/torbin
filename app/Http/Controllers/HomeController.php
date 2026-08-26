@@ -10,23 +10,39 @@ use App\Services\Analytics\TourViewTracker;
 use App\Services\RelatedComparisons;
 use App\Services\Seo\StructuredDataBuilder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 class HomeController extends Controller
 {
     public function index(AdvertisementManager $advertisements, StructuredDataBuilder $seo): View
     {
-        $categorySections = collect(config('comparison.categories'))->map(function (array $config, string $category) {
-            $items = Tour::query()
-                ->published()
-                ->where('category', $category)
-                ->withPublicPricing()
-                ->orderByDesc('compared_sources_count')
-                ->latest()
-                ->limit(6)
-                ->get();
+        $cachedSections = Cache::remember('public-home:category-sections:v1', now()->addSeconds(30), function () {
+            return collect(config('comparison.categories'))->map(function (array $config, string $category) {
+                $items = Tour::query()
+                    ->published()
+                    ->where('category', $category)
+                    ->withPublicPricing()
+                    ->orderByDesc('compared_sources_count')
+                    ->latest()
+                    ->limit(6)
+                    ->get()
+                    ->map(fn (Tour $tour) => $tour->getAttributes())
+                    ->all();
 
-            return ['key' => $category, 'config' => $config, 'items' => $items];
+                return ['key' => $category, 'config' => $config, 'items' => $items];
+            })->values()->all();
+        });
+
+        $categorySections = collect($cachedSections)->map(function (array $section) {
+            $section['items'] = collect($section['items'])->map(function (array $attributes) {
+                $tour = new Tour();
+                $tour->setRawAttributes($attributes, true);
+
+                return $tour;
+            });
+
+            return $section;
         });
         $homeSliderAds = $advertisements->forPlacement('home_slider', 8);
         $homeInlineAds = $advertisements->forPlacement('home_inline', 4);

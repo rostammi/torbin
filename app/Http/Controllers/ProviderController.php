@@ -48,7 +48,7 @@ class ProviderController extends Controller
             ->latest()
             ->paginate(12)
             ->withQueryString();
-        $canonicalUrl = route('providers.show', $provider);
+        $canonicalUrl = rtrim(route('providers.show', $provider), '/').'/';
         $canonicalQuery = array_filter([
             'category' => $category ?: null,
             'page' => $items->currentPage() > 1 ? $items->currentPage() : null,

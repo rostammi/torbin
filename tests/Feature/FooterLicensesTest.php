@@ -22,4 +22,14 @@ class FooterLicensesTest extends TestCase
             ->assertSee('نماد اعتماد الکترونیکی')
             ->assertSee('نشان ساماندهی');
     }
+
+    public function test_footer_links_to_geyt_social_profiles_with_accessible_icons(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('href="https://www.linkedin.com/company/geyt/"', false)
+            ->assertSee('aria-label="لینکدین گیت"', false)
+            ->assertSee('href="https://www.instagram.com/geyt.ir"', false)
+            ->assertSee('aria-label="اینستاگرام گیت"', false);
+    }
 }

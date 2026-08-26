@@ -17,7 +17,7 @@ class ProviderPagesTest extends TestCase
         $hotel = $this->offering('hotel', 'هتل مشهد علی‌بابا', 'alibaba-mashhad-hotel', 'علی بابا هتل');
         $other = $this->offering('tour', 'تور کیش جاباما', 'jabama-kish', 'جاباما');
         $providerUrl = $tour->priceSources->first()->agency->publicUrl();
-        $this->assertStringEndsWith('/providers/alibaba', $providerUrl);
+        $this->assertStringEndsWith('/providers/alibaba/', $providerUrl);
 
         $this->get($providerUrl)
             ->assertOk()
@@ -27,7 +27,10 @@ class ProviderPagesTest extends TestCase
             ->assertSee($hotel->title)
             ->assertDontSee($other->title)
             ->assertSee('تورها')
-            ->assertSee('هتل‌ها');
+            ->assertSee('هتل‌ها')
+            ->assertSee('"@type":"ProfilePage"', false)
+            ->assertSee('"@type":"TravelAgency"', false)
+            ->assertSee('"@type":"OfferCatalog"', false);
     }
 
     public function test_provider_page_can_be_filtered_by_category_and_hides_unfunded_offers(): void

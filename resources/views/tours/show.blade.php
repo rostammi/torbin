@@ -4,13 +4,14 @@
 @section('meta')
     <link rel="canonical" href="{{ $tour->publicUrl() }}">
     <meta name="description" content="{{ trim($tour->excerpt ?: \Illuminate\Support\Str::limit(strip_tags($tour->description), 160)) }}">
+    @if($tour->cover_image)<link rel="preload" as="image" href="{{ Storage::url($tour->cover_image) }}" fetchpriority="high">@endif
     @if($tour->seo_keywords)<meta name="keywords" content="{{ implode(', ', $tour->seo_keywords) }}">@endif
 @endsection
 
 @section('content')
     <section class="tour-hero">
         @if ($tour->cover_image)
-            <img src="{{ Storage::url($tour->cover_image) }}" alt="{{ $tour->title }}">
+            <img src="{{ Storage::url($tour->cover_image) }}" alt="تصویر اصلی {{ $tour->title }}" width="1920" height="1080" loading="eager" fetchpriority="high" decoding="async">
         @endif
         <div class="tour-hero-overlay"></div>
         <div class="container tour-hero-content">
@@ -37,7 +38,7 @@
                 <div class="gallery">
                     @foreach ($tour->gallery as $image)
                         <a href="{{ Storage::url($image) }}" target="_blank" rel="noopener">
-                            <img src="{{ Storage::url($image) }}" alt="تصویر {{ $tour->title }}">
+                            <img src="{{ Storage::url($image) }}" alt="تصویر {{ $loop->iteration }} از {{ $tour->title }}" width="1280" height="720" loading="lazy" fetchpriority="low" decoding="async">
                         </a>
                     @endforeach
                 </div>

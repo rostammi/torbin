@@ -1,7 +1,7 @@
 <aside class="ad-banner {{ $class ?? '' }}" aria-label="تبلیغات">
     <a href="{{ route('advertisements.click', $advertisement) }}" target="_blank" rel="nofollow sponsored noopener">
         @if($advertisement->image_url)
-            <img src="{{ $advertisement->image_url }}" alt="{{ $advertisement->title ?: $advertisement->advertiser_name }}">
+            <img src="{{ $advertisement->image_url }}" alt="{{ $advertisement->title ?: $advertisement->advertiser_name }}" width="900" height="400" loading="lazy" fetchpriority="low" decoding="async">
         @endif
         <div class="ad-copy">
             <small>تبلیغات · {{ $advertisement->advertiser_name }}</small>
