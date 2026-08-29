@@ -67,6 +67,7 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::middleware('admin.only')->group(function () {
+        Route::post('tours/convert-images-to-webp', [AdminTourController::class, 'convertImagesToWebp'])->name('tours.convert-images-to-webp');
         Route::resource('tours', AdminTourController::class)->except('show');
         Route::resource('advertisements', AdvertisementController::class)->except('show');
         Route::resource('static-pages', AdminStaticPageController::class)->only(['index', 'edit', 'update']);

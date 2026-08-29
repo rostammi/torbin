@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'گیت | مقایسه قیمت تور')</title>
+    <title>@yield('title', 'گیت | مقایسه قیمت تور، هتل، اقامتگاه و خدمات ویزا')</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('favicon.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
@@ -14,6 +14,9 @@
     @elseif(request()->routeIs('search.*'))
         <meta name="robots" content="noindex, follow">
     @endif
+    @unless(request()->routeIs('admin.*', 'login'))
+        @include('seo.social-meta')
+    @endunless
     @include('seo.structured-data', ['structuredData' => $structuredData ?? []])
     @include('seo.critical-css')
     <link rel="preload" href="{{ asset('fonts/Vazirmatn.woff2') }}" as="font" type="font/woff2" crossorigin fetchpriority="high">

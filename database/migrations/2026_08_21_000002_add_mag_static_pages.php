@@ -14,17 +14,17 @@ return new class extends Migration
                 'title' => 'تور خارجی',
                 'content' => <<<'HTML'
 <div class="mag-page-lead">
-    <img src="/images/mag/worldwide-tours.jpg" alt="تور خارجی">
+    <img src="/images/mag/worldwide-tours.webp" alt="تور خارجی">
     <div>
         <p>تور خارجی فرصتی عالی برای آشنایی با فرهنگ‌ها، تاریخ، جاذبه‌های جدید و زیبایی‌های طبیعی کشورهای دیگر است. انتخاب بهترین تورهای خارجی نیاز به بررسی و مقایسه دارد تا بتوان بهترین گزینه را با توجه به نیازها و بودجه خود پیدا کرد.</p>
         <p>سایت گیت به عنوان یکی از منابع معتبر، انواع مختلفی از تورها را ارائه می‌دهد که می‌توانید با مقایسه قیمت و خدمات آن‌ها، بهترین گزینه را انتخاب کنید. در گیت می‌توانید بهترین تور خارجی را با قیمت مناسب انتخاب کنید و از سفر خود لذت ببرید.</p>
     </div>
 </div>
 <div class="mag-image-grid">
-    <img src="/images/mag/copacabana-beach.jpg" alt="ساحل کوپاکابانا">
-    <img src="/images/mag/maldives.jpg" alt="مالدیو">
-    <img src="/images/mag/france.jpg" alt="فرانسه">
-    <img src="/images/mag/dubai.jpg" alt="دبی">
+    <img src="/images/mag/copacabana-beach.webp" alt="ساحل کوپاکابانا">
+    <img src="/images/mag/maldives.webp" alt="مالدیو">
+    <img src="/images/mag/france.webp" alt="فرانسه">
+    <img src="/images/mag/dubai.webp" alt="دبی">
 </div>
 <p>در گیت می‌توانید با مقایسه و بررسی تورهای خارجی با توجه به علایق و بودجه، یک تور خارجی با بهترین قیمت پیدا کنید و سفری لذت‌بخش را تجربه کنید.</p>
 <p>نمونه‌های بیشتری از تورهای خارجی را می‌توانید در <a href="/category/tour/">دسته‌بندی تورها</a> مشاهده و مقایسه کنید.</p>
@@ -43,10 +43,10 @@ HTML,
 </div>
 <p>با افزایش تمایل افراد به سفر، بخش رزرو اقامتگاه به‌ویژه در سال‌های اخیر تبدیل به یک منبع اصلی برای برنامه‌ریزی سفرهای داخلی شده است. از آنجا که انتخاب اقامتگاه مناسب تأثیر زیادی بر کیفیت سفر دارد، در بخش رزرو اقامتگاه گیت می‌توانید با سهولت و سرعت گزینه‌های مختلف را بررسی، مقایسه و در نهایت از سایت مورد نظر رزرو کنید.</p>
 <div class="mag-image-grid">
-    <img src="/images/mag/villa-bushehr.jpeg" alt="اقامتگاه بوشهر">
-    <img src="/images/mag/villa-shirgah.jpg" alt="اقامتگاه شیرگاه">
+    <img src="/images/mag/villa-bushehr.webp" alt="اقامتگاه بوشهر">
+    <img src="/images/mag/villa-shirgah.webp" alt="اقامتگاه شیرگاه">
     <img src="/images/mag/villa-4.webp" alt="ویلا">
-    <img src="/images/mag/villa-main.jpg" alt="اقامتگاه">
+    <img src="/images/mag/villa-main.webp" alt="اقامتگاه">
 </div>
 <p>در <a href="/category/accommodation/">دسته‌بندی رزرو اقامتگاه</a> می‌توانید پیشنهادهای بیشتری را بررسی کنید. این امکان به مسافران کمک می‌کند با نگاهی جامع‌تر، گزینه‌های متنوعی را برای اقامت خود مقایسه کنند.</p>
 HTML,
@@ -56,17 +56,17 @@ HTML,
                 'title' => 'تور داخلی',
                 'content' => <<<'HTML'
 <div class="mag-page-lead">
-    <img src="/images/mag/domestic-tours.jpg" alt="تور داخلی">
+    <img src="/images/mag/domestic-tours.webp" alt="تور داخلی">
     <div>
         <p>تور داخلی برای ما که در کشوری به زیبایی ایران زندگی می‌کنیم، از نظر جذابیت و لذت سفر چیزی از تور خارجی کم ندارد. ایران کشوری چهار فصل است که در هر زمان از سال می‌توان جلوه‌های متفاوت طبیعت را در آن دید.</p>
         <p>برای تجربه هوای معتدل و بهاری می‌توان با تور زمینی، هوایی یا ریلی به شمال کشور سفر کرد و برای تجربه هوایی خنک و فرح‌بخش با تور تبریز و تور کرمانشاه به غرب کشور رفت. هم‌زمان با تور قشم و تور کیش می‌توان گرما و حال‌وهوای جنوب کشور را تجربه کرد.</p>
     </div>
 </div>
 <div class="mag-image-grid">
-    <img src="/images/mag/sea.jpg" alt="دریای شمال">
-    <img src="/images/mag/mesr-desert.jpg" alt="کویر مصر">
-    <img src="/images/mag/badab-surt.jpg" alt="باداب سورت">
-    <img src="/images/mag/masal.jpg" alt="ماسال">
+    <img src="/images/mag/sea.webp" alt="دریای شمال">
+    <img src="/images/mag/mesr-desert.webp" alt="کویر مصر">
+    <img src="/images/mag/badab-surt.webp" alt="باداب سورت">
+    <img src="/images/mag/masal.webp" alt="ماسال">
 </div>
 <p>در گیت می‌توانید با مقایسه و بررسی تورهای داخلی با توجه به علایق و بودجه، یک تور داخلی با بهترین قیمت پیدا کنید و سفری لذت‌بخش را تجربه کنید.</p>
 <p>تورهای بیشتر را در <a href="/category/tour/">دسته‌بندی تورها</a> مشاهده و مقایسه کنید.</p>
@@ -77,16 +77,16 @@ HTML,
                 'title' => 'رزرو هتل داخلی',
                 'content' => <<<'HTML'
 <div class="mag-page-lead">
-    <img src="/images/mag/domestic-hotels.jpeg" alt="رزرو هتل داخلی">
+    <img src="/images/mag/domestic-hotels.webp" alt="رزرو هتل داخلی">
     <div>
         <p>رزرو هتل داخلی نه‌تنها به شما کمک می‌کند سفر خود را به‌راحتی برنامه‌ریزی کنید، بلکه امکان دسترسی آسان به جاذبه‌های شهرهای داخلی را نیز فراهم می‌کند. با توجه به تنوع هتل‌ها و قیمت‌های مختلف، انتخاب بهترین گزینه می‌تواند چالش‌برانگیز باشد.</p>
         <p>استفاده از پلتفرم‌های آنلاین مانند گیت کمک می‌کند گزینه‌های موجود را کنار هم ببینید و انتخاب مطمئن‌تری داشته باشید.</p>
     </div>
 </div>
 <div class="mag-image-grid">
-    <img src="/images/mag/hotel-spinas.jpg" alt="هتل اسپیناس">
-    <img src="/images/mag/kermanshah-hotel.jpg" alt="هتل کرمانشاه">
-    <img src="/images/mag/hotel-3.jpg" alt="هتل داخلی">
+    <img src="/images/mag/hotel-spinas.webp" alt="هتل اسپیناس">
+    <img src="/images/mag/kermanshah-hotel.webp" alt="هتل کرمانشاه">
+    <img src="/images/mag/hotel-3.webp" alt="هتل داخلی">
     <img src="/images/mag/hotel-4.webp" alt="هتل داخلی">
 </div>
 <h2>مزایای استفاده از گیت برای انتخاب و رزرو هتل داخلی</h2>
@@ -105,17 +105,17 @@ HTML,
                 'title' => 'رزرو هتل خارجی',
                 'content' => <<<'HTML'
 <div class="mag-page-lead">
-    <img src="/images/mag/worldwide-hotels.jpg" alt="رزرو هتل خارجی">
+    <img src="/images/mag/worldwide-hotels.webp" alt="رزرو هتل خارجی">
     <div>
         <p>اگر به دنبال بهترین گزینه‌ها برای رزرو هتل خارجی هستید، گیت می‌تواند راهکار مناسبی برای شما باشد. با استفاده از گیت می‌توانید قیمت‌های مختلف هتل‌ها را مقایسه کنید و گزینه‌ای متناسب با علایق و بودجه خود پیدا کنید.</p>
         <p>با توجه به تنوع بالای هتل‌ها، مقایسه قیمت‌ها کمک می‌کند بهترین هتل‌ها را با مناسب‌ترین قیمت پیدا کنید.</p>
     </div>
 </div>
 <div class="mag-image-grid">
-    <img src="/images/mag/hotels-1.jpg" alt="هتل خارجی">
+    <img src="/images/mag/hotels-1.webp" alt="هتل خارجی">
     <img src="/images/mag/hotels-2.webp" alt="هتل خارجی">
-    <img src="/images/mag/hotels-pool.jpg" alt="استخر هتل">
-    <img src="/images/mag/maldives.jpg" alt="هتل مالدیو">
+    <img src="/images/mag/hotels-pool.webp" alt="استخر هتل">
+    <img src="/images/mag/maldives.webp" alt="هتل مالدیو">
 </div>
 <h2>نکات مهم برای رزرو هتل خارجی</h2>
 <ul>

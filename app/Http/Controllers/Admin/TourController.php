@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\AddTourImages;
+use App\Jobs\ConvertTourImagesToWebp;
 use App\Jobs\RefreshTourImages;
 use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Services\Alerts\PriceAlertNotifier;
 use App\Services\Images\TourImageManager;
+use App\Services\Images\WebpImageConverter;
 use App\Services\PriceCrawler;
 use App\Services\TourPriceUpdater;
 use App\Services\TourSlugGenerator;
@@ -22,6 +24,8 @@ use Throwable;
 
 class TourController extends Controller
 {
+    public function __construct(private readonly WebpImageConverter $webp) {}
+
     public function index(Request $request): View
     {
         $category = array_key_exists($request->string('category')->toString(), config('comparison.categories'))
@@ -45,7 +49,14 @@ class TourController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $tour = Tour::create($this->validated($request));
+        $data = $this->validated($request);
+        try {
+            $tour = Tour::create($data);
+        } catch (Throwable $exception) {
+            $this->deleteNewImages($data);
+
+            throw $exception;
+        }
 
         return redirect()->route('admin.tours.edit', $tour)->with('success', 'صفحه مقایسه ساخته شد؛ حالا منابع قیمت را اضافه کنید.');
     }
@@ -62,7 +73,21 @@ class TourController extends Controller
 
     public function update(Request $request, Tour $tour): RedirectResponse
     {
-        $tour->update($this->validated($request, $tour));
+        $oldCover = $tour->cover_image;
+        $oldGallery = collect($tour->gallery ?? []);
+        $data = $this->validated($request, $tour);
+
+        try {
+            $tour->update($data);
+        } catch (Throwable $exception) {
+            $this->deleteNewImages($data, collect([$oldCover])->concat($oldGallery)->filter()->all());
+
+            throw $exception;
+        }
+
+        if (isset($data['cover_image']) && $oldCover && $oldCover !== $data['cover_image']) {
+            Storage::disk('public')->delete($oldCover);
+        }
 
         return redirect()->route('admin.tours.edit', $tour)->with('success', 'اطلاعات صفحه مقایسه ذخیره شد.');
     }
@@ -182,6 +207,28 @@ class TourController extends Controller
         }
     }
 
+    public function convertImagesToWebp(): RedirectResponse
+    {
+        $running = SyncRun::query()
+            ->where('type', 'images_webp')
+            ->where('status', 'running')
+            ->whereNull('finished_at')
+            ->exists();
+
+        if ($running) {
+            return back()->with('error', 'تبدیل تصاویر قبلی به WebP از قبل در صف یا در حال اجراست.');
+        }
+
+        $run = SyncRun::create([
+            'user_id' => auth()->id(),
+            'type' => 'images_webp',
+            'started_at' => now(),
+        ]);
+        ConvertTourImagesToWebp::dispatch($run->id);
+
+        return back()->with('success', 'تبدیل تصاویر قبلی به WebP در صف قرار گرفت؛ فایل قدیمی فقط پس از تبدیل موفق حذف می‌شود.');
+    }
+
     public function uploadImages(Request $request, Tour $tour, TourImageManager $images): RedirectResponse
     {
         $data = $request->validate([
@@ -238,20 +285,29 @@ class TourController extends Controller
         $data['is_active'] = $request->boolean('is_active');
 
         if ($request->hasFile('cover_image')) {
-            if ($tour?->cover_image) {
-                Storage::disk('public')->delete($tour->cover_image);
-            }
-            $data['cover_image'] = $request->file('cover_image')->store('tours/covers', 'public');
+            $data['cover_image'] = $this->webp->storeUpload($request->file('cover_image'), 'tours/covers');
         } else {
             unset($data['cover_image']);
         }
 
         $gallery = $tour?->gallery ?? [];
         foreach ($request->file('gallery', []) as $image) {
-            $gallery[] = $image->store('tours/gallery', 'public');
+            $gallery[] = $this->webp->storeUpload($image, 'tours/gallery');
         }
         $data['gallery'] = $gallery;
 
         return $data;
+    }
+
+    private function deleteNewImages(array $data, array $preserve = []): void
+    {
+        $paths = collect([$data['cover_image'] ?? null])
+            ->concat($data['gallery'] ?? [])
+            ->filter()
+            ->diff($preserve)
+            ->values()
+            ->all();
+
+        Storage::disk('public')->delete($paths);
     }
 }

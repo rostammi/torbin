@@ -14,6 +14,8 @@ use Symfony\Component\Process\Process;
 
 class TourImageCrawler
 {
+    public function __construct(private readonly WebpImageConverter $webp) {}
+
     public function crawl(Tour $tour, bool $replace = false, bool $append = false, ?int $limit = null): array
     {
         $tour->refresh();
@@ -258,17 +260,13 @@ class TourImageCrawler
                 $transformed = true;
             }
 
-            $extension = match ((int) ($size[2] ?? 0)) {
-                IMAGETYPE_JPEG => 'jpg',
-                IMAGETYPE_PNG => 'png',
-                IMAGETYPE_WEBP => 'webp',
-                default => null,
-            };
-            if ($extension === null) {
+            $body = $this->webp->encode($body);
+            $size = @getimagesizefromstring($body);
+            if (! is_array($size) || ($size[2] ?? null) !== IMAGETYPE_WEBP) {
                 return null;
             }
 
-            $path = 'tours/crawled/'.$tour->id.'/'.Str::uuid().'.'.$extension;
+            $path = 'tours/crawled/'.$tour->id.'/'.Str::uuid().'.webp';
             if (! Storage::disk('public')->put($path, $body)) {
                 throw new RuntimeException('ذخیره تصویر در فضای عمومی ناموفق بود.');
             }

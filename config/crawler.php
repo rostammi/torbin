@@ -24,6 +24,8 @@ return [
         'min_aspect_ratio' => (float) env('TOUR_IMAGE_MIN_ASPECT_RATIO', 1.2),
         'max_bytes' => (int) env('TOUR_IMAGE_MAX_BYTES', 8_388_608),
         'ffmpeg_binary' => env('TOUR_IMAGE_FFMPEG_BINARY', 'ffmpeg'),
+        'webp_quality' => (int) env('TOUR_IMAGE_WEBP_QUALITY', 82),
+        'webp_max_width' => (int) env('TOUR_IMAGE_WEBP_MAX_WIDTH', 1920),
         'aliases' => [
             'کیش' => 'Kish Island Iran',
             'مشهد' => 'Mashhad Iran',

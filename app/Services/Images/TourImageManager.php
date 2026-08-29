@@ -10,6 +10,8 @@ use Throwable;
 
 class TourImageManager
 {
+    public function __construct(private readonly WebpImageConverter $webp) {}
+
     public function orderedPaths(Tour $tour): Collection
     {
         return collect([$tour->cover_image])
@@ -25,7 +27,7 @@ class TourImageManager
 
         try {
             foreach ($uploads as $upload) {
-                $newPaths->push($upload->store('tours/manual/'.$tour->id, 'public'));
+                $newPaths->push($this->webp->storeUpload($upload, 'tours/manual/'.$tour->id));
             }
 
             $orderedPaths = $newPaths

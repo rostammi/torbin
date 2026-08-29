@@ -3,7 +3,7 @@
 @section('title', 'مگ گیت | راهنمای سفر، تور و اقامت')
 @section('meta')
     <link rel="canonical" href="{{ route('mag.index').'/' }}">
-    <meta name="description" content="راهنمای سفر، انتخاب تور، رزرو هتل و اقامتگاه در مگ گیت.">
+    <meta name="description" content="در مگ گیت راهنماهای کاربردی سفر، انتخاب تور، رزرو هتل و اقامتگاه را بخوانید و با نکات مقصدها، هزینه‌ها و انتخاب بهتر خدمات سفر آشنا شوید.">
 @endsection
 
 @section('content')

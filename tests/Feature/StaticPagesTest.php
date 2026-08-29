@@ -62,11 +62,11 @@ class StaticPagesTest extends TestCase
     public function test_mag_pages_are_seeded_at_their_original_urls_with_local_content_images(): void
     {
         foreach ([
-            'worldwide-tours' => ['تور خارجی', 'worldwide-tours.jpg'],
+            'worldwide-tours' => ['تور خارجی', 'worldwide-tours.webp'],
             'accommodation' => ['رزرو اقامتگاه', 'accommodation.webp'],
-            'domestic-tours' => ['تور داخلی', 'domestic-tours.jpg'],
-            'domestic-hotels' => ['رزرو هتل داخلی', 'domestic-hotels.jpeg'],
-            'worldwide-hotels' => ['رزرو هتل خارجی', 'worldwide-hotels.jpg'],
+            'domestic-tours' => ['تور داخلی', 'domestic-tours.webp'],
+            'domestic-hotels' => ['رزرو هتل داخلی', 'domestic-hotels.webp'],
+            'worldwide-hotels' => ['رزرو هتل خارجی', 'worldwide-hotels.webp'],
         ] as $slug => [$title, $image]) {
             $page = StaticPage::where('slug', $slug)->sole();
 

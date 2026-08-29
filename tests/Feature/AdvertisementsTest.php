@@ -39,6 +39,8 @@ class AdvertisementsTest extends TestCase
 
         $advertisement = Advertisement::firstOrFail();
         Storage::disk('public')->assertExists($advertisement->image_path);
+        $this->assertStringEndsWith('.webp', $advertisement->image_path);
+        $this->assertSame(IMAGETYPE_WEBP, getimagesizefromstring(Storage::disk('public')->get($advertisement->image_path))[2]);
         $this->assertSame('home_slider', $advertisement->placement);
 
         $this->actingAs($admin)->put(route('admin.advertisements.update', $advertisement), [

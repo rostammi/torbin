@@ -5,14 +5,18 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Advertisement;
 use App\Models\Agency;
+use App\Services\Images\WebpImageConverter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class AdvertisementController extends Controller
 {
+    public function __construct(private readonly WebpImageConverter $webp) {}
+
     public function index(Request $request): View
     {
         $placement = $request->string('placement')->toString();
@@ -38,7 +42,16 @@ class AdvertisementController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        Advertisement::create($this->validated($request));
+        $data = $this->validated($request);
+        try {
+            Advertisement::create($data);
+        } catch (Throwable $exception) {
+            if (isset($data['image_path'])) {
+                Storage::disk('public')->delete($data['image_path']);
+            }
+
+            throw $exception;
+        }
 
         return redirect()->route('admin.advertisements.index')->with('success', 'تبلیغ ساخته شد.');
     }
@@ -52,7 +65,20 @@ class AdvertisementController extends Controller
 
     public function update(Request $request, Advertisement $advertisement): RedirectResponse
     {
-        $advertisement->update($this->validated($request, $advertisement));
+        $oldImage = $advertisement->image_path;
+        $data = $this->validated($request, $advertisement);
+        try {
+            $advertisement->update($data);
+        } catch (Throwable $exception) {
+            if (isset($data['image_path']) && $data['image_path'] !== $oldImage) {
+                Storage::disk('public')->delete($data['image_path']);
+            }
+
+            throw $exception;
+        }
+        if (isset($data['image_path']) && $oldImage && $oldImage !== $data['image_path']) {
+            Storage::disk('public')->delete($oldImage);
+        }
 
         return back()->with('success', 'تبلیغ به‌روزرسانی شد.');
     }
@@ -93,10 +119,7 @@ class AdvertisementController extends Controller
         unset($data['image']);
 
         if ($request->hasFile('image')) {
-            if ($advertisement?->image_path) {
-                Storage::disk('public')->delete($advertisement->image_path);
-            }
-            $data['image_path'] = $request->file('image')->store('advertisements', 'public');
+            $data['image_path'] = $this->webp->storeUpload($request->file('image'), 'advertisements');
         }
 
         return $data;

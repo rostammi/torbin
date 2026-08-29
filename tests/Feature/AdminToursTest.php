@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ConvertTourImagesToWebp;
+use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Models\User;
+use App\Services\Images\TourImageWebpMigrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AdminToursTest extends TestCase
@@ -80,6 +84,8 @@ class AdminToursTest extends TestCase
         $firstManual = $tour->cover_image;
         $secondManual = $tour->gallery[0];
         $this->assertStringStartsWith('tours/manual/'.$tour->id.'/', $firstManual);
+        $this->assertStringEndsWith('.webp', $firstManual);
+        $this->assertStringEndsWith('.webp', $secondManual);
         $this->assertSame([$secondManual, 'tours/old-cover.jpg', 'tours/old-gallery.jpg'], $tour->gallery);
         $this->assertSame(['آپلود دستی', 'آپلود دستی'], collect($tour->image_sources)->pluck('artist')->all());
         Storage::disk('public')->assertExists($firstManual);
@@ -102,6 +108,60 @@ class AdminToursTest extends TestCase
             ->assertSee('افزودن ۳ عکس خودکار')
             ->assertSee('آپلود و قراردادن در ابتدا')
             ->assertSee(Storage::url($newOrder[0]));
+    }
+
+    public function test_admin_can_queue_conversion_of_all_legacy_tour_images_to_webp(): void
+    {
+        Queue::fake();
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->get(route('admin.tours.index'))
+            ->assertOk()
+            ->assertSee('تبدیل عکس‌های قبلی سایت به WebP');
+
+        $this->post(route('admin.tours.convert-images-to-webp'))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $run = SyncRun::where('type', 'images_webp')->sole();
+        Queue::assertPushed(ConvertTourImagesToWebp::class, fn ($job) => $job->runId === $run->id);
+    }
+
+    public function test_legacy_image_migration_updates_all_references_before_removing_old_files(): void
+    {
+        Storage::fake('public');
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+        Storage::disk('public')->put('tours/legacy-cover.png', $png);
+        Storage::disk('public')->put('tours/legacy-gallery.jpg', $png);
+        $tour = Tour::create([
+            'title' => 'تور دارای تصاویر قدیمی',
+            'slug' => 'legacy-images-to-webp',
+            'description' => 'توضیحات',
+            'cover_image' => 'tours/legacy-cover.png',
+            'gallery' => ['tours/legacy-gallery.jpg'],
+            'image_sources' => [
+                ['path' => 'tours/legacy-cover.png', 'artist' => 'عکاس اول'],
+                ['path' => 'tours/legacy-gallery.jpg', 'artist' => 'عکاس دوم'],
+            ],
+            'is_active' => true,
+        ]);
+
+        $result = app(TourImageWebpMigrator::class)->migrate($tour);
+
+        $tour->refresh();
+        $this->assertSame(2, $result['converted']);
+        $this->assertStringEndsWith('.webp', $tour->cover_image);
+        $this->assertStringEndsWith('.webp', $tour->gallery[0]);
+        $this->assertSame(
+            [$tour->cover_image, $tour->gallery[0]],
+            collect($tour->image_sources)->pluck('path')->all(),
+        );
+        Storage::disk('public')->assertExists($tour->cover_image);
+        Storage::disk('public')->assertExists($tour->gallery[0]);
+        Storage::disk('public')->assertMissing('tours/legacy-cover.png');
+        Storage::disk('public')->assertMissing('tours/legacy-gallery.jpg');
+        $this->assertSame(IMAGETYPE_WEBP, getimagesizefromstring(Storage::disk('public')->get($tour->cover_image))[2]);
     }
 
     public function test_tour_index_uses_compact_persian_pagination(): void

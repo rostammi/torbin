@@ -11,6 +11,7 @@ use App\Services\Discovery\GeytReferencePageProvisioner;
 use App\Services\PriceCrawler;
 use App\Services\ScheduledSyncDispatcher;
 use App\Services\Seo\LegacyRedirectSynchronizer;
+use App\Services\Seo\SitemapGenerator;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,13 @@ use Illuminate\Support\Facades\Schema;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('seo:sitemap', function (SitemapGenerator $sitemap) {
+    $path = $sitemap->write();
+    $this->info("Sitemap generated: {$path}");
+})->purpose('Generate the physical public sitemap.xml file');
+
+Schedule::command('seo:sitemap')->hourly()->withoutOverlapping();
 
 Artisan::command('sync:work', function (ScheduledSyncDispatcher $scheduledSyncs) {
     $scheduledSyncs->dispatchDailyPriceRefreshIfDue();

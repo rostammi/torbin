@@ -2,8 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Agency;
 use App\Models\PriceSource;
+use App\Models\StaticPage;
 use App\Models\Tour;
+use App\Observers\SitemapContentObserver;
+use App\Services\Seo\SitemapRefreshScheduler;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
@@ -16,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(SitemapRefreshScheduler::class);
     }
 
     /**
@@ -36,10 +40,17 @@ class AppServiceProvider extends ServiceProvider
         Paginator::defaultView('pagination.admin');
         Paginator::defaultSimpleView('pagination.simple-admin');
 
-        $clearHomeSections = static fn () => Cache::forget('public-home:category-sections:v1');
+        $clearHomeSections = static function (): void {
+            Cache::forget('public-home:category-sections:v1');
+        };
         Tour::saved($clearHomeSections);
         Tour::deleted($clearHomeSections);
         PriceSource::saved($clearHomeSections);
         PriceSource::deleted($clearHomeSections);
+
+        Tour::observe(SitemapContentObserver::class);
+        StaticPage::observe(SitemapContentObserver::class);
+        Agency::observe(SitemapContentObserver::class);
+        PriceSource::observe(SitemapContentObserver::class);
     }
 }

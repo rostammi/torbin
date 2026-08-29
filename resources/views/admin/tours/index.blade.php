@@ -6,7 +6,14 @@
     <section class="container admin-page">
         <div class="section-head">
             <div><span class="eyebrow">پنل مدیریت</span><h1>صفحات مقایسه</h1></div>
-            <div class="heading-actions"><a class="button button-secondary" href="{{ route('admin.suggestions.index') }}">پیشنهادها</a><a class="button" href="{{ route('admin.tours.create', ['category' => $category]) }}">+ صفحه جدید</a></div>
+            <div class="heading-actions">
+                <form method="post" action="{{ route('admin.tours.convert-images-to-webp') }}" onsubmit="return confirm('همه تصاویر قدیمی پیشنهادها و تبلیغات به WebP تبدیل شوند؟ فایل قدیمی فقط بعد از تبدیل موفق حذف می‌شود.')">
+                    @csrf
+                    <button class="button button-secondary" type="submit">تبدیل عکس‌های قبلی سایت به WebP</button>
+                </form>
+                <a class="button button-secondary" href="{{ route('admin.suggestions.index') }}">پیشنهادها</a>
+                <a class="button" href="{{ route('admin.tours.create', ['category' => $category]) }}">+ صفحه جدید</a>
+            </div>
         </div>
         <div class="filter-tabs">
             <a class="{{ $category === null ? 'active' : '' }}" href="{{ route('admin.tours.index') }}">همه</a>

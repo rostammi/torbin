@@ -1,9 +1,11 @@
 @extends('layouts.app')
 
-@section('title', $categoryConfig ? 'مقایسه قیمت '.$categoryConfig['plural'].' | گیت' : 'گیت | مقایسه خدمات سفر')
+@section('title', $categoryConfig ? 'مقایسه قیمت '.$categoryConfig['plural'].' | گیت' : 'گیت | مقایسه قیمت تور، هتل، اقامتگاه و خدمات ویزا')
 @section('meta')
     <link rel="canonical" href="{{ $categoryConfig ? $canonicalUrl : url('/') }}">
-    <meta name="description" content="{{ $categoryConfig ? 'مقایسه قیمت و پیشنهادهای '.$categoryConfig['plural'].' از ارائه‌دهندگان معتبر در گیت.' : 'مقایسه قیمت تور، هتل، اقامتگاه و خدمات ویزا از ارائه‌دهندگان معتبر در گیت.' }}">
+    <meta name="description" content="{{ $categoryConfig
+        ? 'قیمت و پیشنهادهای '.$categoryConfig['plural'].' را در گیت از ارائه‌دهندگان معتبر مقایسه کنید، جزئیات هر گزینه را ببینید و برای خرید مستقیم بهترین انتخاب را پیدا کنید.'
+        : 'در گیت قیمت تور، هتل، اقامتگاه و خدمات ویزا را از ارائه‌دهندگان معتبر مقایسه کنید، بهترین پیشنهاد را پیدا کنید و مستقیم از فروشنده خرید کنید.' }}">
 @endsection
 
 @section('content')

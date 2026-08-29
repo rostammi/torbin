@@ -2,8 +2,15 @@
 
 @section('title', $tour->title . ' | مقایسه قیمت')
 @section('meta')
+    @php
+        $metaDescription = trim($tour->excerpt ?: strip_tags($tour->description));
+        if (mb_strlen($metaDescription) < 110) {
+            $metaDescription .= ' در گیت قیمت‌ها و پیشنهادهای این '.$tour->categoryLabel().' را از ارائه‌دهندگان معتبر مقایسه کنید و بهترین گزینه را برای خرید مستقیم پیدا کنید.';
+        }
+        $metaDescription = \Illuminate\Support\Str::limit(trim($metaDescription), 155);
+    @endphp
     <link rel="canonical" href="{{ $tour->publicUrl() }}">
-    <meta name="description" content="{{ trim($tour->excerpt ?: \Illuminate\Support\Str::limit(strip_tags($tour->description), 160)) }}">
+    <meta name="description" content="{{ $metaDescription }}">
     @if($tour->cover_image)<link rel="preload" as="image" href="{{ Storage::url($tour->cover_image) }}" fetchpriority="high">@endif
     @if($tour->seo_keywords)<meta name="keywords" content="{{ implode(', ', $tour->seo_keywords) }}">@endif
 @endsection

@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\Agency;
 use App\Models\LegacyRedirect;
+use App\Models\StaticPage;
 use App\Models\Tour;
 use App\Models\TourSuggestion;
 use App\Models\User;
 use App\Services\Seo\LegacyRedirectSynchronizer;
+use App\Services\Seo\SitemapGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -52,10 +55,40 @@ class SeoMigrationTest extends TestCase
         ];
         $this->withServerVariables($secureServer)->get('/')
             ->assertOk()
+            ->assertHeader('Strict-Transport-Security', 'max-age=31536000')
             ->assertSee('<link rel="canonical" href="https://geyt.ir">', false);
         $this->withServerVariables($secureServer)->get('/faq/')
             ->assertOk()
             ->assertSee('<link rel="canonical" href="https://geyt.ir/faq/">', false);
+    }
+
+    public function test_hsts_is_only_sent_for_https_and_supports_optional_directives(): void
+    {
+        config([
+            'app.url' => 'https://geyt.ir',
+            'security.hsts.enabled' => true,
+            'security.hsts.max_age' => 63_072_000,
+            'security.hsts.include_subdomains' => true,
+            'security.hsts.preload' => true,
+        ]);
+        URL::forceRootUrl('https://geyt.ir');
+        URL::forceScheme('https');
+
+        $this->withServerVariables([
+            'HTTP_HOST' => 'geyt.ir',
+            'HTTPS' => 'on',
+            'SERVER_PORT' => 443,
+        ])->get('/')
+            ->assertOk()
+            ->assertHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+
+        $this->withServerVariables([
+            'HTTP_HOST' => 'geyt.ir',
+            'HTTPS' => 'off',
+            'SERVER_PORT' => 80,
+        ])->get('/')
+            ->assertStatus(301)
+            ->assertHeaderMissing('Strict-Transport-Security');
     }
 
     public function test_old_geyt_detail_url_redirects_directly_to_the_current_canonical_url(): void
@@ -198,6 +231,16 @@ class SeoMigrationTest extends TestCase
             'description' => '...',
             'is_active' => false,
         ]);
+        $publishedWithoutImage = Tour::create([
+            'category' => 'visa',
+            'title' => 'ویزای بدون تصویر اختصاصی',
+            'slug' => 'published-with-fallback-image',
+            'description' => '...',
+            'is_active' => true,
+        ]);
+        $providerWithoutOffer = Agency::create(['name' => 'پروایدر بدون پیشنهاد فعال']);
+        $aboutPage = StaticPage::where('slug', 'about-us')->sole();
+        $magPage = StaticPage::where('slug', 'worldwide-tours')->sole();
 
         $response = $this->get(route('seo.sitemap'))
             ->assertOk()
@@ -207,10 +250,46 @@ class SeoMigrationTest extends TestCase
             ->assertSee('<loc>'.route('stays.index').'/'.'</loc>', false)
             ->assertSee('xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"', false)
             ->assertSee('<image:loc>'.url(Storage::url($published->cover_image)).'</image:loc>', false)
+            ->assertSee('<loc>'.$publishedWithoutImage->publicUrl().'</loc>', false)
+            ->assertSee('<image:loc>'.asset('images/geyt-social-share.png').'</image:loc>', false)
+            ->assertSee('<loc>'.$providerWithoutOffer->publicUrl().'</loc>', false)
+            ->assertSee('<loc>'.$aboutPage->publicUrl().'</loc>', false)
+            ->assertSee('<loc>'.$magPage->publicUrl().'</loc>', false)
             ->assertDontSee('masal-second.jpg')
             ->assertDontSee($draft->publicUrl());
 
         $this->assertNotFalse(simplexml_load_string($response->getContent()));
+        $urlCount = substr_count($response->getContent(), '<url>');
+        $this->assertSame($urlCount, substr_count($response->getContent(), '<lastmod>'));
+        $this->assertSame($urlCount, substr_count($response->getContent(), '<changefreq>'));
+        $this->assertSame($urlCount, substr_count($response->getContent(), '<priority>'));
+        $this->assertMatchesRegularExpression(
+            '~<loc>'.preg_quote($published->publicUrl(), '~').'</loc>\s*<lastmod>[^<]+</lastmod>\s*<changefreq>daily</changefreq>\s*<priority>1\.0</priority>~',
+            $response->getContent(),
+        );
+        $this->assertSame(
+            Tour::query()->published()->count(),
+            substr_count($response->getContent(), '<image:image>'),
+            'Every published comparison URL must have exactly one sitemap image.',
+        );
+
+        $physicalPath = sys_get_temp_dir().'/geyt-physical-sitemap-'.uniqid().'.xml';
+        config(['seo.sitemap.path' => $physicalPath]);
+        $this->beforeApplicationDestroyed(static fn () => @unlink($physicalPath));
+
+        app(SitemapGenerator::class)->write();
+
+        $this->assertFileExists($physicalPath);
+        $physicalXml = file_get_contents($physicalPath);
+        $this->assertNotFalse(simplexml_load_string($physicalXml));
+        $this->assertStringContainsString('<loc>'.$published->publicUrl().'</loc>', $physicalXml);
+        $this->assertStringContainsString('<image:loc>'.url(Storage::url($published->cover_image)).'</image:loc>', $physicalXml);
+        $this->assertStringContainsString('<loc>'.$publishedWithoutImage->publicUrl().'</loc>', $physicalXml);
+        $this->assertStringContainsString('<image:loc>'.asset('images/geyt-social-share.png').'</image:loc>', $physicalXml);
+        $this->assertStringContainsString('<loc>'.$providerWithoutOffer->publicUrl().'</loc>', $physicalXml);
+        $this->assertStringContainsString('<loc>'.$aboutPage->publicUrl().'</loc>', $physicalXml);
+        $this->assertStringContainsString('<loc>'.$magPage->publicUrl().'</loc>', $physicalXml);
+        $this->assertStringNotContainsString($draft->publicUrl(), $physicalXml);
     }
 
     public function test_public_pages_expose_canonical_metadata_and_matching_structured_data(): void
@@ -235,6 +314,13 @@ class SeoMigrationTest extends TestCase
 
         $this->get(route('home'))
             ->assertOk()
+            ->assertSee('<title>گیت | مقایسه قیمت تور، هتل، اقامتگاه و خدمات ویزا</title>', false)
+            ->assertSee('<meta name="description" content="در گیت قیمت تور، هتل، اقامتگاه و خدمات ویزا را از ارائه‌دهندگان معتبر مقایسه کنید، بهترین پیشنهاد را پیدا کنید و مستقیم از فروشنده خرید کنید.">', false)
+            ->assertSee('<meta property="og:title" content="گیت | مقایسه قیمت تور، هتل، اقامتگاه و خدمات ویزا">', false)
+            ->assertSee('<meta property="og:url" content="'.url('/').'">', false)
+            ->assertSee('<meta property="og:image" content="'.asset('images/geyt-social-share.png').'">', false)
+            ->assertSee('<meta property="og:image:width" content="1200">', false)
+            ->assertSee('<meta name="twitter:card" content="summary_large_image">', false)
             ->assertSee('"@type":"Organization"', false)
             ->assertSee('"@type":"WebSite"', false)
             ->assertSee('rel="preload" href="'.asset('css/app.css').'" as="style"', false)
@@ -247,7 +333,9 @@ class SeoMigrationTest extends TestCase
             ->assertSee('<link rel="canonical" href="'.$tour->publicUrl().'">', false)
             ->assertSee('<link rel="preload" as="image" href="'.Storage::url($tour->cover_image).'" fetchpriority="high">', false)
             ->assertSee('loading="eager" fetchpriority="high" decoding="async"', false)
-            ->assertSee('<meta name="description" content="مقایسه قیمت تور شیراز">', false)
+            ->assertSee('<meta name="description" content="مقایسه قیمت تور شیراز در گیت قیمت‌ها و پیشنهادهای این تور را از ارائه‌دهندگان معتبر مقایسه کنید و بهترین گزینه را برای خرید مستقیم پیدا کنید.">', false)
+            ->assertSee('<meta property="og:image" content="'.url(Storage::url($tour->cover_image)).'">', false)
+            ->assertSee('<meta name="twitter:image" content="'.url(Storage::url($tour->cover_image)).'">', false)
             ->assertSee('"@type":"TouristTrip"', false)
             ->assertSee('"@type":"AggregateOffer"', false)
             ->assertSee('"price":"50000000"', false)
@@ -270,9 +358,12 @@ class SeoMigrationTest extends TestCase
             ->assertSee('<meta name="robots" content="noindex, nofollow">', false);
 
         $robots = file_get_contents(public_path('robots.txt'));
+        $physicalSitemap = file_get_contents(public_path('sitemap.xml'));
         $this->assertStringContainsString('Disallow: /admin', $robots);
         $this->assertStringContainsString('Disallow: /search', $robots);
         $this->assertStringContainsString('Sitemap: https://geyt.ir/sitemap.xml', $robots);
+        $this->assertNotFalse(simplexml_load_string($physicalSitemap));
+        $this->assertStringContainsString('<loc>https://geyt.ir/category/tour/</loc>', $physicalSitemap);
     }
 
     private function legacySuggestion(

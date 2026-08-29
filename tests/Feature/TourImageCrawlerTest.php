@@ -93,6 +93,8 @@ class TourImageCrawlerTest extends TestCase
         $this->assertSame(2, $run->details['images']['downloaded']);
         $this->assertNotNull($tour->cover_image);
         $this->assertCount(1, $tour->gallery);
+        $this->assertStringEndsWith('.webp', $tour->cover_image);
+        $this->assertStringEndsWith('.webp', $tour->gallery[0]);
         $this->assertCount(2, $tour->image_sources);
         Storage::disk('public')->assertExists($tour->cover_image);
         Storage::disk('public')->assertExists($tour->gallery[0]);
