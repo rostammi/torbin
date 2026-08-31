@@ -7,6 +7,8 @@ use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Services\Images\AdvertisementImageWebpMigrator;
 use App\Services\Images\TourImageWebpMigrator;
+use App\Services\Images\UnreferencedPublicImageWebpMigrator;
+use App\Services\Seo\SitemapGenerator;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -31,13 +33,21 @@ class ConvertTourImagesToWebp implements ShouldBeUnique, ShouldQueue
         return 'convert-tour-images-to-webp';
     }
 
-    public function handle(TourImageWebpMigrator $tourMigrator, AdvertisementImageWebpMigrator $advertisementMigrator): void
-    {
+    public function handle(
+        TourImageWebpMigrator $tourMigrator,
+        AdvertisementImageWebpMigrator $advertisementMigrator,
+        UnreferencedPublicImageWebpMigrator $unreferencedMigrator,
+        SitemapGenerator $sitemap,
+    ): void {
         $run = SyncRun::findOrFail($this->runId);
         $tourQuery = Tour::query()
             ->where(fn ($query) => $query->whereNotNull('cover_image')->orWhereNotNull('gallery'))
             ->orderBy('id');
         $advertisementQuery = Advertisement::query()->whereNotNull('image_path')->orderBy('id');
+        $autoRefreshSitemap = config('seo.sitemap.auto_refresh', true);
+        config(['seo.sitemap.auto_refresh' => false]);
+
+        try {
         $run->update([
             'status' => 'running',
             'total' => (clone $tourQuery)->count() + (clone $advertisementQuery)->count(),
@@ -98,6 +108,12 @@ class ConvertTourImagesToWebp implements ShouldBeUnique, ShouldQueue
                 }
             }
 
+            $unreferenced = $unreferencedMigrator->migrate();
+            foreach (['converted', 'deleted'] as $key) {
+                $details[$key] += $unreferenced[$key];
+            }
+            $details['unreferenced'] = $unreferenced;
+
             $run->refresh();
             if ($run->status === 'cancelled') {
                 return;
@@ -119,6 +135,16 @@ class ConvertTourImagesToWebp implements ShouldBeUnique, ShouldQueue
             ]);
 
             throw $exception;
+        }
+        } finally {
+            config(['seo.sitemap.auto_refresh' => $autoRefreshSitemap]);
+            if ($autoRefreshSitemap) {
+                try {
+                    $sitemap->write();
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
+            }
         }
     }
 

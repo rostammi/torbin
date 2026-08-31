@@ -5,6 +5,7 @@ use App\Models\LegacyRedirect;
 use App\Models\PriceSource;
 use App\Models\SyncRun;
 use App\Models\Tour;
+use App\Jobs\ConvertTourImagesToWebp;
 use App\Services\Alerts\PriceAlertNotifier;
 use App\Services\Discovery\ComparisonCatalogDiscovery;
 use App\Services\Discovery\GeytReferencePageProvisioner;
@@ -26,6 +27,24 @@ Artisan::command('seo:sitemap', function (SitemapGenerator $sitemap) {
     $path = $sitemap->write();
     $this->info("Sitemap generated: {$path}");
 })->purpose('Generate the physical public sitemap.xml file');
+
+Artisan::command('images:convert-webp', function () {
+    $run = SyncRun::create([
+        'type' => 'images_webp',
+        'started_at' => now(),
+    ]);
+
+    app()->call([new ConvertTourImagesToWebp($run->id), 'handle']);
+    $run->refresh();
+    $details = data_get($run->details, 'webp', []);
+
+    $this->info("Status: {$run->status}");
+    $this->line('Converted: '.data_get($details, 'converted', 0));
+    $this->line('Deleted JPG/JPEG: '.data_get($details, 'deleted', 0));
+    $this->line('Failed records: '.$run->failed);
+
+    return $run->status === 'success' ? 0 : 1;
+})->purpose('Synchronously convert all stored site images to WebP and update references');
 
 Schedule::command('seo:sitemap')->hourly()->withoutOverlapping();
 

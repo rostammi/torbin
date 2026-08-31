@@ -64,6 +64,12 @@ class WebpImageConverter
         $filename = pathinfo($path, PATHINFO_FILENAME).'.webp';
         $target = ($directory !== '' ? $directory.'/' : '').$filename;
         if ($disk->exists($target)) {
+            $existing = $disk->get($target);
+            $existingSize = @getimagesizefromstring($existing);
+            if (is_array($existingSize) && ($existingSize[2] ?? null) === IMAGETYPE_WEBP) {
+                return $target;
+            }
+
             $target = ($directory !== '' ? $directory.'/' : '').pathinfo($path, PATHINFO_FILENAME).'-'.Str::uuid().'.webp';
         }
 

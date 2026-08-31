@@ -302,7 +302,7 @@ class TourImageCrawler
             (int) ceil($targetHeight * (float) config('crawler.images.min_aspect_ratio', 1.2)),
         );
 
-        if (function_exists('imagecreatefromstring')) {
+        if (function_exists('imagecreatefromstring') && function_exists('imagewebp')) {
             return $this->scaleAndCropWithGd($body, $targetWidth, $targetHeight);
         }
 
@@ -332,7 +332,7 @@ class TourImageCrawler
             }
 
             ob_start();
-            imagejpeg($target, null, 88);
+            imagewebp($target, null, (int) config('crawler.images.webp_quality', 82));
 
             return ob_get_clean() ?: null;
         } finally {
@@ -347,7 +347,7 @@ class TourImageCrawler
         if ($input === false) {
             return null;
         }
-        $output = $input.'.jpg';
+        $output = $input.'.webp';
 
         try {
             if (file_put_contents($input, $body) === false) {
@@ -358,7 +358,9 @@ class TourImageCrawler
                 (string) config('crawler.images.ffmpeg_binary', 'ffmpeg'),
                 '-hide_banner', '-loglevel', 'error', '-y', '-i', $input,
                 '-vf', "scale={$targetWidth}:{$targetHeight}:force_original_aspect_ratio=increase,crop={$targetWidth}:{$targetHeight}",
-                '-frames:v', '1', '-q:v', '3', $output,
+                '-frames:v', '1', '-c:v', 'libwebp',
+                '-quality', (string) config('crawler.images.webp_quality', 82),
+                '-compression_level', '6', $output,
             ]);
             $process->setTimeout(30)->run();
             if (! $process->isSuccessful() || ! is_file($output)) {

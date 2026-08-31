@@ -14,6 +14,7 @@ class TourImageWebpMigrator
     {
         $paths = collect([$tour->cover_image])
             ->concat($tour->gallery ?? [])
+            ->concat(collect($tour->image_sources ?? [])->pluck('path'))
             ->filter()
             ->unique()
             ->values();
