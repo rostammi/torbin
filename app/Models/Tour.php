@@ -68,6 +68,11 @@ class Tour extends Model
         return $this->hasMany(PriceSource::class);
     }
 
+    public function legacyRedirects(): HasMany
+    {
+        return $this->hasMany(LegacyRedirect::class);
+    }
+
     public function suggestions(): HasMany
     {
         return $this->hasMany(TourSuggestion::class);

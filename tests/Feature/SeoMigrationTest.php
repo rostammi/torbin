@@ -19,6 +19,31 @@ class SeoMigrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_valid_google_tag_manager_container_is_rendered_in_official_head_and_body_positions(): void
+    {
+        config(['services.google_tag_manager.container_id' => 'gtm-abc123']);
+
+        $html = $this->get(route('home'))->assertOk()->getContent();
+
+        $this->assertStringContainsString("'https://www.googletagmanager.com/gtm.js?id='+i+dl", $html);
+        $this->assertStringContainsString("(window,document,'script','dataLayer',\"GTM-ABC123\")", $html);
+        $this->assertStringContainsString(
+            'https://www.googletagmanager.com/ns.html?id=GTM-ABC123',
+            $html,
+        );
+        $this->assertMatchesRegularExpression('~<head>\s*<!-- Google Tag Manager -->~', $html);
+        $this->assertMatchesRegularExpression('~<body>\s*<!-- Google Tag Manager \(noscript\) -->~', $html);
+    }
+
+    public function test_google_tag_manager_is_not_rendered_without_a_valid_container_id(): void
+    {
+        config(['services.google_tag_manager.container_id' => 'invalid-id']);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertDontSee('googletagmanager.com', false);
+    }
+
     public function test_www_host_redirects_directly_to_apex_canonical_url(): void
     {
         config(['app.url' => 'https://geyt.ir']);

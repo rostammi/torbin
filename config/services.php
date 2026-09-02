@@ -2,6 +2,10 @@
 
 return [
 
+    'google_tag_manager' => [
+        'container_id' => env('GOOGLE_TAG_MANAGER_ID'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services
