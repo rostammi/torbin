@@ -15,6 +15,7 @@ use App\Services\Images\WebpImageConverter;
 use App\Services\PriceCrawler;
 use App\Services\TourPriceUpdater;
 use App\Services\TourSlugGenerator;
+use App\Support\AdminTable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -32,13 +33,22 @@ class TourController extends Controller
         $category = array_key_exists($request->string('category')->toString(), config('comparison.categories'))
             ? $request->string('category')->toString()
             : null;
-        $tours = Tour::withCount([
+        $term = AdminTable::term($request);
+        $query = Tour::withCount([
             'priceSources',
             'priceSources as priced_sources_count' => fn ($query) => $query
                 ->where('is_active', true)
                 ->where('latest_price', '>', 0),
         ])->when($category, fn ($query) => $query->where('category', $category))
-            ->latest()->paginate(15)->withQueryString();
+            ->when($term !== '', fn ($query) => $query->where(fn ($search) => $search
+                ->where('title', 'like', "%{$term}%")
+                ->orWhere('slug', 'like', "%{$term}%")
+                ->orWhere('excerpt', 'like', "%{$term}%")));
+        AdminTable::sort($query, $request, [
+            'title' => 'title', 'category' => 'category', 'sources' => 'price_sources_count',
+            'priced_sources' => 'priced_sources_count', 'status' => 'is_active', 'created' => 'created_at',
+        ], [['created_at', 'desc']]);
+        $tours = $query->paginate(15)->withQueryString();
 
         return view('admin.tours.index', compact('tours', 'category'));
     }

@@ -13,6 +13,7 @@ use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Models\TourSuggestion;
 use App\Services\SyncCenterJobDispatcher;
+use App\Support\AdminTable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,9 +21,19 @@ use Illuminate\View\View;
 
 class SyncController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $runs = SyncRun::with('user')->latest()->paginate(20);
+        $term = AdminTable::term($request);
+        $query = SyncRun::with('user')->when($term !== '', fn ($query) => $query->where(fn ($search) => $search
+            ->where('type', 'like', "%{$term}%")
+            ->orWhere('status', 'like', "%{$term}%")
+            ->orWhere('error', 'like', "%{$term}%")
+            ->orWhereHas('user', fn ($user) => $user->where('name', 'like', "%{$term}%"))));
+        AdminTable::sort($query, $request, [
+            'type' => 'type', 'started' => 'started_at', 'status' => 'status',
+            'successful' => 'successful', 'total' => 'total', 'finished' => 'finished_at',
+        ], [['created_at', 'desc']]);
+        $runs = $query->paginate(20)->withQueryString();
         $suggestionsByCategory = TourSuggestion::query()
             ->where('status', 'pending')
             ->selectRaw('category, COUNT(*) as aggregate')

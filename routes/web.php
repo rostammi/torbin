@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\TourController as AdminTourController;
 use App\Http\Controllers\Admin\TourSuggestionController;
 use App\Http\Controllers\AdvertisementClickController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ContactClickController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OutboundClickController;
 use App\Http\Controllers\PriceAlertController;
@@ -51,6 +52,7 @@ Route::get('/hotel/{tour}', [HomeController::class, 'show'])->defaults('category
 Route::get('/accommodation/{tour}', [HomeController::class, 'show'])->defaults('category_key', 'stay')->name('stays.show');
 Route::get('/visa/{tour}', [HomeController::class, 'show'])->defaults('category_key', 'visa')->name('visas.show');
 Route::get('/go/{source}', OutboundClickController::class)->middleware('throttle:30,1')->name('outbound.click');
+Route::post('/contact-click/{source}', ContactClickController::class)->middleware('throttle:60,1')->name('contact.click');
 Route::get('/ads/{advertisement}/click', AdvertisementClickController::class)->middleware('throttle:60,1')->name('advertisements.click');
 Route::post('/tours/{tour}/price-alerts', [PriceAlertController::class, 'store'])->middleware('throttle:5,1')->name('price-alerts.store');
 Route::get('/price-alerts/unsubscribe/{token}', [PriceAlertController::class, 'unsubscribe'])->middleware('throttle:10,1')->name('price-alerts.unsubscribe');

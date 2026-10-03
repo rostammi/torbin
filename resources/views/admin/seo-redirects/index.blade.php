@@ -25,10 +25,11 @@
             <a class="{{ $status === 'matched' ? 'active' : '' }}" href="{{ route('admin.seo-redirects.index', ['status' => 'matched']) }}">متناظر ({{ number_format($counts['matched']) }})</a>
             <a class="{{ $status === 'manual' ? 'active' : '' }}" href="{{ route('admin.seo-redirects.index', ['status' => 'manual']) }}">مرج دستی ({{ number_format($counts['manual']) }})</a>
         </div>
+        <x-admin.table-search placeholder="جست‌وجو در URL قدیمی، عنوان یا مقصد…" />
 
         <div class="panel table-wrap">
             <table>
-                <thead><tr><th>صفحه قدیمی</th><th>وضعیت</th><th>مقصد canonical جدید</th><th>بازدید ریدایرکت</th><th>مرج دستی</th></tr></thead>
+                <thead><tr><x-admin.sortable-header column="source" label="صفحه قدیمی" /><x-admin.sortable-header column="status" label="وضعیت" /><x-admin.sortable-header column="destination" label="مقصد canonical جدید" /><x-admin.sortable-header column="hits" label="بازدید ریدایرکت" /><th>مرج دستی</th></tr></thead>
                 <tbody>
                 @forelse($redirects as $redirect)
                     <tr>

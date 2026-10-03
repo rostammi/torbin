@@ -51,10 +51,11 @@
             <a class="{{ $status === 'created' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['category' => $category, 'region' => $region, 'status' => 'created']) }}">ساخته‌شده</a>
             <a class="{{ $status === 'failed' ? 'active' : '' }}" href="{{ route('admin.suggestions.index', ['category' => $category, 'region' => $region, 'status' => 'failed']) }}">نیازمند بررسی</a>
         </div>
+        <x-admin.table-search placeholder="جست‌وجو در کلیدواژه، عنوان یا منبع…" />
 
         <div class="panel table-wrap">
             <table>
-                <thead><tr><th>کلیدواژه و عنوان پیشنهادی</th><th>امتیاز تقاضا</th><th>منبع</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+                <thead><tr><x-admin.sortable-header column="keyword" label="کلیدواژه و عنوان پیشنهادی" /><x-admin.sortable-header column="trend" label="امتیاز تقاضا" /><x-admin.sortable-header column="source" label="منبع" /><x-admin.sortable-header column="status" label="وضعیت" /><th>عملیات</th></tr></thead>
                 <tbody>
                 @forelse ($suggestions as $suggestion)
                     <tr>

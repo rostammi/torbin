@@ -51,6 +51,11 @@ class Agency extends Model
         return $this->hasMany(OutboundClick::class);
     }
 
+    public function contactClicks(): HasMany
+    {
+        return $this->hasMany(ContactClick::class);
+    }
+
     public function creditTransactions(): HasMany
     {
         return $this->hasMany(AgencyCreditTransaction::class);

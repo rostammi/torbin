@@ -10,6 +10,8 @@
                 <h1>{{ $selectedAgency ? 'داشبورد '.$selectedAgency->name : 'داشبورد کل آژانس‌ها' }}</h1>
             </div>
             <form class="dashboard-filters" method="get">
+                @if(request()->filled('q'))<input type="hidden" name="q" value="{{ request('q') }}">@endif
+                @if(request()->filled('sort'))<input type="hidden" name="sort" value="{{ request('sort') }}"><input type="hidden" name="direction" value="{{ request('direction', 'desc') }}">@endif
                 @if(auth()->user()->isAdmin())
                     <select name="agency_id">
                         <option value="">همه آژانس‌ها</option>
@@ -29,13 +31,16 @@
         <div class="dashboard-kpis">
             <article class="panel"><span>نمایش صفحات پیشنهاد</span><strong>{{ number_format($viewsTotal) }}</strong></article>
             <article class="panel"><span>کلیک خروجی موفق</span><strong>{{ number_format($clicksTotal) }}</strong></article>
+            <article class="panel"><span>کلیک «تماس بگیرید»</span><strong>{{ number_format($contactClicksTotal) }}</strong></article>
             <article class="panel"><span>نرخ تبدیل کلیک</span><strong>{{ number_format($conversionTotal, 2) }}٪</strong></article>
             <article class="panel"><span>هزینه کلیک‌ها</span><strong>{{ number_format($costTotal) }} <small>تومان</small></strong></article>
         </div>
 
+        <x-admin.table-search placeholder="جست‌وجو در عنوان یا آدرس پیشنهاد…" />
+
         <div class="panel table-wrap dashboard-table">
             <table>
-                <thead><tr><th>پیشنهاد</th><th>کمترین قیمت سایت</th><th>قیمت آژانس</th><th>فاصله با کمترین قیمت</th><th>نمایش صفحه</th><th>کلیک خرید</th><th>کانورژن</th><th>هزینه برای آژانس</th></tr></thead>
+                <thead><tr><x-admin.sortable-header column="title" label="پیشنهاد" /><x-admin.sortable-header column="minimum_price" label="کمترین قیمت سایت" />@if($selectedAgency)<x-admin.sortable-header column="agency_price" label="قیمت آژانس" /><x-admin.sortable-header column="gap" label="فاصله با کمترین قیمت" />@else<th>قیمت آژانس</th><th>فاصله با کمترین قیمت</th>@endif<x-admin.sortable-header column="views" label="نمایش صفحه" /><x-admin.sortable-header column="clicks" label="کلیک خرید" /><x-admin.sortable-header column="contact_clicks" label="کلیک تماس" /><x-admin.sortable-header column="conversion" label="کانورژن" /><x-admin.sortable-header column="cost" label="هزینه برای آژانس" /></tr></thead>
                 <tbody>
                     @forelse($tours as $tour)
                         @php
@@ -75,16 +80,49 @@
                             </td>
                             <td>{{ number_format($tour->views_count) }}</td>
                             <td>{{ number_format($tour->clicks_count) }}</td>
+                            <td>{{ number_format($tour->contact_clicks_count) }}</td>
                             <td>{{ number_format($conversion, 2) }}٪</td>
                             <td>{{ number_format($tour->click_cost ?? 0) }} تومان</td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="empty-cell">هنوز پیشنهادی برای نمایش در این داشبورد وجود ندارد.</td></tr>
+                        <tr><td colspan="9" class="empty-cell">هنوز پیشنهادی برای نمایش در این داشبورد وجود ندارد.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
         {{ $tours->links('pagination.admin') }}
+
+        <section class="potential-keywords">
+            <div class="subsection-head">
+                <div><span class="eyebrow">تفکیک تماس‌ها</span><h2>کلیک‌های «تماس بگیرید» بر اساس شماره مقصد</h2></div>
+                <span class="muted">مستقل از کلیک خرید و بدون هزینه کلیک</span>
+            </div>
+            <x-admin.table-search query-key="q_contact" page-key="page_contact" placeholder="جست‌وجو در نام مقصد تماس…" />
+            <div class="panel table-wrap">
+                <table>
+                    <thead><tr><x-admin.sortable-header column="agency" label="مقصد تماس" sort-key="sort_contact" direction-key="direction_contact" page-key="page_contact" /><th>نوع شماره</th><x-admin.sortable-header column="clicks" label="تعداد کلیک" sort-key="sort_contact" direction-key="direction_contact" page-key="page_contact" /></tr></thead>
+                    <tbody>
+                        @foreach($agencyContactClicks as $contactRow)
+                            <tr>
+                                <td><strong>{{ $contactRow->agency?->name ?? 'آژانس حذف‌شده' }}</strong></td>
+                                <td>شماره اختصاصی آژانس</td>
+                                <td>{{ number_format($contactRow->clicks_count) }}</td>
+                            </tr>
+                        @endforeach
+                        @if($showGeneralContactClicks)
+                            <tr>
+                                <td><strong>گیت</strong></td>
+                                <td>شماره عمومی</td>
+                                <td>{{ number_format($generalContactClicksTotal) }}</td>
+                            </tr>
+                        @endif
+                        @if($agencyContactClicks->isEmpty() && ! $showGeneralContactClicks)
+                            <tr><td colspan="3" class="empty-cell">در بازه انتخاب‌شده هنوز کلیک تماسی ثبت نشده است.</td></tr>
+                        @endif
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
         @if(auth()->user()->isAdmin())
             <section class="potential-keywords">
@@ -92,9 +130,10 @@
                     <div><span class="eyebrow">فرصت توسعه محصول</span><h2>کیوردهای دارای پتانسیل ساخت پیشنهاد</h2></div>
                     <span class="muted">جست‌وجوهایی که هیچ نتیجه‌ای نداشته‌اند</span>
                 </div>
+                <x-admin.table-search query-key="q_keyword" page-key="page_keyword" placeholder="جست‌وجو در عبارت‌های بدون نتیجه…" />
                 <div class="panel table-wrap">
                     <table>
-                        <thead><tr><th>عبارت جست‌وجو</th><th>تعداد جست‌وجو</th><th>کاربران تقریبی</th><th>آخرین جست‌وجو</th></tr></thead>
+                        <thead><tr><x-admin.sortable-header column="keyword" label="عبارت جست‌وجو" sort-key="sort_keyword" direction-key="direction_keyword" page-key="page_keyword" /><x-admin.sortable-header column="searches" label="تعداد جست‌وجو" sort-key="sort_keyword" direction-key="direction_keyword" page-key="page_keyword" /><x-admin.sortable-header column="visitors" label="کاربران تقریبی" sort-key="sort_keyword" direction-key="direction_keyword" page-key="page_keyword" /><x-admin.sortable-header column="last_search" label="آخرین جست‌وجو" sort-key="sort_keyword" direction-key="direction_keyword" page-key="page_keyword" /></tr></thead>
                         <tbody>
                             @forelse($potentialKeywords as $keyword)
                                 <tr>

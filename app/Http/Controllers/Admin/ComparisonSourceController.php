@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ScanComparisonSource;
 use App\Models\ComparisonSource;
 use App\Models\SyncRun;
+use App\Support\AdminTable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,10 +15,21 @@ use Illuminate\View\View;
 
 class ComparisonSourceController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $term = AdminTable::term($request);
+        $query = ComparisonSource::query()->when($term !== '', fn ($query) => $query->where(fn ($search) => $search
+            ->where('name', 'like', "%{$term}%")
+            ->orWhere('homepage_url', 'like', "%{$term}%")
+            ->orWhere('last_error', 'like', "%{$term}%")
+            ->orWhere('categories', 'like', "%{$term}%")));
+        AdminTable::sort($query, $request, [
+            'name' => 'name', 'categories' => 'categories', 'last_scan' => 'last_scanned_at', 'result' => 'last_status',
+            'status' => 'is_active', 'created' => 'created_at',
+        ], [['created_at', 'desc']]);
+
         return view('admin.comparison-sources.index', [
-            'sources' => ComparisonSource::query()->latest()->paginate(20),
+            'sources' => $query->paginate(20)->withQueryString(),
             'categories' => config('comparison.categories'),
         ]);
     }

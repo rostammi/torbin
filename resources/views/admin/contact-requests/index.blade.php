@@ -22,10 +22,11 @@
                 @endforeach
             </div>
         </div>
+        <x-admin.table-search placeholder="جست‌وجو در شماره تماس یا عنوان صفحه…" />
 
         <div class="panel table-wrap">
             <table class="contact-request-table">
-                <thead><tr><th>شماره تماس</th><th>صفحه مقایسه</th><th>نحوه ثبت</th><th>زمان ثبت</th><th>وضعیت پیگیری</th></tr></thead>
+                <thead><tr><x-admin.sortable-header column="phone" label="شماره تماس" /><x-admin.sortable-header column="tour" label="صفحه مقایسه" /><x-admin.sortable-header column="origin" label="نحوه ثبت" /><x-admin.sortable-header column="created" label="زمان ثبت" /><x-admin.sortable-header column="status" label="وضعیت پیگیری" /></tr></thead>
                 <tbody>
                     @forelse($requests as $contactRequest)
                         <tr>

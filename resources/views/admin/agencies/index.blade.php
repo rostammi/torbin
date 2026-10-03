@@ -26,6 +26,21 @@
             <button class="button" type="submit">ذخیره شماره تماس</button>
         </form>
 
+        <form method="get" class="admin-table-search" role="search">
+            <label><span class="sr-only">جست‌وجوی آژانس</span><input type="search" name="q" value="{{ request('q') }}" placeholder="جست‌وجو در نام، شماره تماس یا ایمیل…" maxlength="100"></label>
+            <select name="sort" aria-label="مرتب‌سازی آژانس‌ها">
+                <option value="name" @selected(request('sort', 'name') === 'name')>نام</option>
+                <option value="balance" @selected(request('sort') === 'balance')>اعتبار</option>
+                <option value="sources" @selected(request('sort') === 'sources')>تعداد پیشنهادها</option>
+                <option value="clicks" @selected(request('sort') === 'clicks')>تعداد کلیک‌ها</option>
+                <option value="charged" @selected(request('sort') === 'charged')>مبلغ کسرشده</option>
+                <option value="cost" @selected(request('sort') === 'cost')>هزینه هر کلیک</option>
+            </select>
+            <select name="direction" aria-label="جهت مرتب‌سازی"><option value="asc" @selected(request('direction', 'asc') === 'asc')>صعودی</option><option value="desc" @selected(request('direction') === 'desc')>نزولی</option></select>
+            <button class="button button-secondary compact-button">اعمال</button>
+            @if(request()->filled('q'))<a class="admin-search-clear" href="{{ route('admin.agencies.index', request()->except(['q', 'page'])) }}">پاک‌کردن</a>@endif
+        </form>
+
         <div class="agency-grid">
             @forelse($agencies as $agency)
                 <article class="panel agency-card">

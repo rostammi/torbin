@@ -21,9 +21,10 @@
                 <a class="{{ $category === $key ? 'active' : '' }}" href="{{ route('admin.tours.index', ['category' => $key]) }}">{{ $item['plural'] }}</a>
             @endforeach
         </div>
+        <x-admin.table-search placeholder="جست‌وجو در عنوان یا آدرس صفحه…" />
         <div class="panel table-wrap">
             <table>
-                <thead><tr><th>صفحه</th><th>تصویر اول</th><th>دسته</th><th>منابع قیمت</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+                <thead><tr><x-admin.sortable-header column="title" label="صفحه" /><th>تصویر اول</th><x-admin.sortable-header column="category" label="دسته" /><x-admin.sortable-header column="sources" label="منابع قیمت" /><x-admin.sortable-header column="status" label="وضعیت" /><th>عملیات</th></tr></thead>
                 <tbody>
                 @forelse ($tours as $tour)
                     @php($firstImage = $tour->cover_image ?: data_get($tour->gallery, 0))

@@ -95,6 +95,11 @@ class Tour extends Model
         return $this->hasMany(OutboundClick::class);
     }
 
+    public function contactClicks(): HasMany
+    {
+        return $this->hasMany(ContactClick::class);
+    }
+
     public function activePrices(): HasMany
     {
         return $this->priceSources()

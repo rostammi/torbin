@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Agency;
 use App\Models\SiteSetting;
 use App\Services\Billing\AgencyBillingService;
+use App\Support\AdminTable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,9 +15,10 @@ use Illuminate\View\View;
 
 class AgencyController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $agencies = Agency::query()
+        $term = AdminTable::term($request);
+        $query = Agency::query()
             ->with([
                 'creditTransactions' => fn ($query) => $query->latest()->limit(5),
                 'users' => fn ($query) => $query->where('role', 'agency')->oldest(),
@@ -27,8 +29,15 @@ class AgencyController extends Controller
                 'clicks as charged_clicks_count' => fn ($query) => $query->where('status', 'charged'),
             ])
             ->withSum('clicks as total_charged', 'charged_amount')
-            ->orderBy('name')
-            ->paginate(20);
+            ->when($term !== '', fn ($query) => $query->where(fn ($search) => $search
+                ->where('name', 'like', "%{$term}%")
+                ->orWhere('contact_phone', 'like', "%{$term}%")
+                ->orWhereHas('users', fn ($users) => $users->where('email', 'like', "%{$term}%"))));
+        AdminTable::sort($query, $request, [
+            'name' => 'name', 'balance' => 'balance', 'sources' => 'price_sources_count',
+            'clicks' => 'clicks_count', 'charged' => 'total_charged', 'cost' => 'cost_per_click',
+        ], [['name', 'asc']]);
+        $agencies = $query->paginate(20)->withQueryString();
 
         $comparisonContactPhone = SiteSetting::comparisonContactPhone();
 

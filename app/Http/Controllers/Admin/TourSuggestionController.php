@@ -8,6 +8,7 @@ use App\Jobs\ProvisionSuggestedTour;
 use App\Models\SyncRun;
 use App\Models\TourSuggestion;
 use App\Services\Discovery\ComparisonCatalogDiscovery;
+use App\Support\AdminTable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -24,11 +25,20 @@ class TourSuggestionController extends Controller
             ? $request->string('region')->toString()
             : 'domestic';
         $status = $request->string('status')->toString();
-        $suggestions = TourSuggestion::with('tour')
+        $term = AdminTable::term($request);
+        $query = TourSuggestion::with('tour')
             ->where('category', $category)
             ->when($category === 'tour', fn ($query) => $query->where('metadata->region', $region))
             ->when($status, fn ($query) => $query->where('status', $status))
-            ->orderByDesc('trend_score')->latest('discovered_at')->paginate(25)->withQueryString();
+            ->when($term !== '', fn ($query) => $query->where(fn ($search) => $search
+                ->where('keyword', 'like', "%{$term}%")
+                ->orWhere('suggested_title', 'like', "%{$term}%")
+                ->orWhere('source', 'like', "%{$term}%")));
+        AdminTable::sort($query, $request, [
+            'keyword' => 'keyword', 'trend' => 'trend_score', 'source' => 'source',
+            'status' => 'status', 'discovered' => 'discovered_at',
+        ], [['trend_score', 'desc'], ['discovered_at', 'desc']]);
+        $suggestions = $query->paginate(25)->withQueryString();
         $regionCounts = collect(['domestic', 'foreign'])->mapWithKeys(fn (string $catalogRegion) => [
             $catalogRegion => TourSuggestion::query()
                 ->where('source', 'destination_catalog')

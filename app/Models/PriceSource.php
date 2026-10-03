@@ -79,6 +79,11 @@ class PriceSource extends Model
         return $this->hasMany(PriceHistory::class)->latest('observed_at');
     }
 
+    public function contactClicks(): HasMany
+    {
+        return $this->hasMany(ContactClick::class);
+    }
+
     public function recentHistory(): HasMany
     {
         return $this->hasMany(PriceHistory::class)->latest('observed_at')->limit(30);

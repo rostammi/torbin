@@ -129,7 +129,7 @@
                             @if($source->is_contact_only || $source->latest_price <= 0)
                                 @php($sourceContactPhone = $source->contact_phone ?: $comparisonContactPhone)
                                 @php($sourceContactHref = \App\Models\SiteSetting::phoneHref($sourceContactPhone))
-                                <button class="contact-reveal" type="button" aria-expanded="false">تماس بگیرید</button>
+                                <button class="contact-reveal" type="button" aria-expanded="false" data-track-url="{{ route('contact.click', $source) }}">تماس بگیرید</button>
                                 <a class="contact-phone" dir="ltr" href="tel:{{ $sourceContactHref }}" hidden>{{ $sourceContactPhone }}</a>
                             @elseif($source->latest_price > 0)
                                 @if(!$source->agency || $source->agency->canAffordClick())
@@ -234,6 +234,16 @@
                 button.hidden = true;
                 button.setAttribute('aria-expanded', 'true');
                 phone.focus();
+
+                fetch(button.dataset.trackUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    keepalive: true,
+                }).catch(() => {});
             });
         });
     </script>

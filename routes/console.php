@@ -159,7 +159,7 @@ Artisan::command('db:import-sqlite', function () {
 
     $tables = [
         'tours', 'agencies', 'users', 'price_sources', 'price_histories', 'price_alerts',
-        'tour_page_views', 'outbound_clicks', 'agency_credit_transactions',
+        'tour_page_views', 'outbound_clicks', 'contact_clicks', 'agency_credit_transactions',
         'search_misses', 'tour_suggestions', 'sync_runs',
     ];
     foreach ($tables as $table) {

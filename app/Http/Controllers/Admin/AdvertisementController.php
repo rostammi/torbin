@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Advertisement;
 use App\Models\Agency;
 use App\Services\Images\WebpImageConverter;
+use App\Support\AdminTable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -20,14 +21,19 @@ class AdvertisementController extends Controller
     public function index(Request $request): View
     {
         $placement = $request->string('placement')->toString();
-        $advertisements = Advertisement::query()
+        $term = AdminTable::term($request);
+        $query = Advertisement::query()
             ->with('agency')
             ->when($placement !== '', fn ($query) => $query->where('placement', $placement))
-            ->orderByDesc('is_active')
-            ->orderByDesc('priority')
-            ->latest()
-            ->paginate(20)
-            ->withQueryString();
+            ->when($term !== '', fn ($query) => $query->where(fn ($search) => $search
+                ->where('name', 'like', "%{$term}%")
+                ->orWhere('advertiser_name', 'like', "%{$term}%")
+                ->orWhere('title', 'like', "%{$term}%")));
+        AdminTable::sort($query, $request, [
+            'name' => 'name', 'placement' => 'placement', 'starts_at' => 'starts_at',
+            'impressions' => 'impressions', 'clicks' => 'clicks', 'status' => 'is_active', 'priority' => 'priority',
+        ], [['is_active', 'desc'], ['priority', 'desc'], ['created_at', 'desc']]);
+        $advertisements = $query->paginate(20)->withQueryString();
 
         return view('admin.advertisements.index', compact('advertisements', 'placement'));
     }

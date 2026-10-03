@@ -23,7 +23,7 @@
                         <strong class="pending">در حال بررسی</strong>
                     @endif
                 </div>
-                <span class="circle-link" aria-hidden="true">←</span>
+                <span class="card-price-link">مشاهده قیمت‌ها</span>
             </div>
         </div>
     </a>

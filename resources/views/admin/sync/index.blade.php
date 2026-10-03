@@ -40,9 +40,10 @@
         </div>
 
         <div class="subsection-head"><div><span class="eyebrow">گزارش اجرا</span><h2>آخرین همگام‌سازی‌ها</h2></div></div>
+        <x-admin.table-search placeholder="جست‌وجو در عملیات، کاربر، وضعیت یا پیام خطا…" />
         <div class="panel table-wrap">
             <table>
-                <thead><tr><th>عملیات</th><th>شروع</th><th>نتیجه</th><th>موفق / کل</th><th>پیام</th><th>کنترل</th></tr></thead>
+                <thead><tr><x-admin.sortable-header column="type" label="عملیات" /><x-admin.sortable-header column="started" label="شروع" /><x-admin.sortable-header column="status" label="نتیجه" /><x-admin.sortable-header column="successful" label="موفق / کل" /><th>پیام</th><th>کنترل</th></tr></thead>
                 <tbody>
                 @forelse ($runs as $run)
                     <tr>

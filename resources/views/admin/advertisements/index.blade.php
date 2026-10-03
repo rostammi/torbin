@@ -15,10 +15,11 @@
                 <a class="{{ $placement === $value ? 'active' : '' }}" href="{{ route('admin.advertisements.index', ['placement' => $value]) }}">{{ $label }}</a>
             @endforeach
         </form>
+        <x-admin.table-search placeholder="جست‌وجو در کمپین، تبلیغ‌دهنده یا عنوان…" />
 
         <div class="panel table-wrap">
             <table class="advertisement-table">
-                <thead><tr><th>کمپین</th><th>جایگاه</th><th>زمان‌بندی</th><th>بازدید / کلیک</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+                <thead><tr><x-admin.sortable-header column="name" label="کمپین" /><x-admin.sortable-header column="placement" label="جایگاه" /><x-admin.sortable-header column="starts_at" label="زمان‌بندی" /><x-admin.sortable-header column="impressions" label="بازدید / کلیک" /><x-admin.sortable-header column="status" label="وضعیت" /><th>عملیات</th></tr></thead>
                 <tbody>
                     @forelse($advertisements as $advertisement)
                         <tr>

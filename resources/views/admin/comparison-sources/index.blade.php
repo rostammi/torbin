@@ -12,11 +12,12 @@
             </div>
             <a class="button" href="{{ route('admin.comparison-sources.create') }}">+ افزودن منبع</a>
         </div>
+        <x-admin.table-search placeholder="جست‌وجو در نام، آدرس یا خطای منبع…" />
 
         <div class="panel table-wrap">
             <table>
                 <thead>
-                <tr><th>منبع</th><th>دسته‌ها</th><th>آخرین اسکن</th><th>نتیجه</th><th>عملیات</th></tr>
+                <tr><x-admin.sortable-header column="name" label="منبع" /><x-admin.sortable-header column="categories" label="دسته‌ها" /><x-admin.sortable-header column="last_scan" label="آخرین اسکن" /><x-admin.sortable-header column="result" label="نتیجه" /><th>عملیات</th></tr>
                 </thead>
                 <tbody>
                 @forelse($sources as $source)

@@ -7,6 +7,7 @@ use App\Models\LegacyRedirect;
 use App\Models\Tour;
 use App\Services\Seo\LegacyRedirectSynchronizer;
 use App\Services\Seo\LegacyUrlNormalizer;
+use App\Support\AdminTable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,14 +20,24 @@ class LegacyRedirectController extends Controller
         $status = in_array($request->string('status')->toString(), ['matched', 'unmatched', 'manual'], true)
             ? $request->string('status')->toString()
             : 'unmatched';
-        $redirects = LegacyRedirect::query()
+        $term = AdminTable::term($request);
+        $query = LegacyRedirect::query()
             ->with('tour')
             ->when($status === 'matched', fn ($query) => $query->whereNotNull('tour_id'))
             ->when($status === 'unmatched', fn ($query) => $query->whereNull('tour_id'))
             ->when($status === 'manual', fn ($query) => $query->where('match_type', 'manual'))
-            ->orderByDesc('updated_at')
-            ->paginate(25)
-            ->withQueryString();
+            ->when($term !== '', fn ($query) => $query->where(fn ($search) => $search
+                ->where('source_title', 'like', "%{$term}%")
+                ->orWhere('old_path', 'like', "%{$term}%")
+                ->orWhere('source_url', 'like', "%{$term}%")
+                ->orWhere('notes', 'like', "%{$term}%")
+                ->orWhereHas('tour', fn ($tour) => $tour->where('title', 'like', "%{$term}%"))));
+        AdminTable::sort($query, $request, [
+            'source' => 'old_path', 'status' => 'match_type',
+            'destination' => fn ($query, $direction) => $query->orderBy(Tour::query()->select('title')->whereColumn('tours.id', 'legacy_redirects.tour_id')->limit(1), $direction),
+            'hits' => 'hits', 'updated' => 'updated_at',
+        ], [['updated_at', 'desc']]);
+        $redirects = $query->paginate(25)->withQueryString();
         $counts = [
             'all' => LegacyRedirect::count(),
             'matched' => LegacyRedirect::whereNotNull('tour_id')->count(),
