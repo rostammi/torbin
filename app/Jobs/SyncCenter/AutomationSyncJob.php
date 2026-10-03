@@ -12,7 +12,7 @@ abstract class AutomationSyncJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 86400;
+    public int $timeout;
 
     public int $tries = 1;
 
@@ -20,6 +20,7 @@ abstract class AutomationSyncJob implements ShouldQueue
 
     public function __construct(public int $runId, public array $retryTargets = [])
     {
+        $this->timeout = (int) config('crawler.sync_job_timeout', 1800);
         $this->onQueue('sync');
     }
 

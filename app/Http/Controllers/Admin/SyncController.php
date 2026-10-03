@@ -69,6 +69,14 @@ class SyncController extends Controller
             return back()->with('error', 'دریافت تصاویر این دسته از قبل در صف یا در حال اجراست.');
         }
 
+        if ($data['type'] === 'prices' && SyncRun::query()
+            ->where('type', 'prices')
+            ->where('status', 'running')
+            ->whereNull('finished_at')
+            ->exists()) {
+            return back()->with('error', 'همگام‌سازی قیمت‌ها از قبل در صف یا در حال اجراست.');
+        }
+
         $run = SyncRun::create(['user_id' => auth()->id(), 'type' => $data['type'], 'started_at' => now()]);
         $dispatcher->dispatch($data['type'], $run->id);
 

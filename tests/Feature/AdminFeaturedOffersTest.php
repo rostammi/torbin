@@ -32,21 +32,18 @@ class AdminFeaturedOffersTest extends TestCase
         $this->assertFalse($otherAgency->fresh()->is_featured);
     }
 
-    public function test_admin_can_feature_one_offer_from_an_agency(): void
+    public function test_shared_feature_setting_is_changed_on_the_agency(): void
     {
         $tour = $this->tour('shiraz');
         $source = $this->source($tour, 'علی‌بابا');
 
+        $agency = $source->agency;
         $this->actingAs(User::factory()->create())
-            ->put(route('admin.sources.update', $source), [
-                'provider_name' => 'علی‌بابا',
-                'source_url' => 'https://example.com/shiraz',
-                'buy_url' => 'https://example.com/shiraz',
-                'extraction_type' => 'manual',
-                'price_multiplier' => 1,
-                'latest_price' => 10_000_000,
-                'currency' => 'تومان',
-                'is_active' => true,
+            ->put(route('admin.agencies.update', $agency), [
+                'name' => $agency->name,
+                'cost_per_click' => $agency->cost_per_click,
+                'contact_priority' => $agency->contact_priority,
+                'display_priority' => $agency->display_priority,
                 'is_featured' => true,
             ])
             ->assertRedirect();

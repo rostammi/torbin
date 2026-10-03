@@ -1,11 +1,11 @@
 <?php
 
+use App\Jobs\ConvertTourImagesToWebp;
 use App\Models\Agency;
 use App\Models\LegacyRedirect;
 use App\Models\PriceSource;
 use App\Models\SyncRun;
 use App\Models\Tour;
-use App\Jobs\ConvertTourImagesToWebp;
 use App\Services\Alerts\PriceAlertNotifier;
 use App\Services\Discovery\ComparisonCatalogDiscovery;
 use App\Services\Discovery\GeytReferencePageProvisioner;
@@ -49,17 +49,19 @@ Artisan::command('images:convert-webp', function () {
 Schedule::command('seo:sitemap')->hourly()->withoutOverlapping();
 
 Artisan::command('sync:work', function (ScheduledSyncDispatcher $scheduledSyncs) {
-    $scheduledSyncs->dispatchDailyPriceRefreshIfDue();
+    $run = $scheduledSyncs->dispatchDailyPriceRefreshIfDue();
+    $scheduledSyncs->resumeRunningPriceRefresh($run);
 
     return $this->call('queue:work', [
         'connection' => 'database',
-        '--queue' => 'sync',
+        '--queue' => 'sync,default',
         '--stop-when-empty' => true,
-        '--tries' => 1,
-        '--timeout' => 86400,
+        '--max-jobs' => 1,
+        '--tries' => 2,
+        '--timeout' => (int) config('crawler.sync_job_timeout', 1800),
         '--memory' => 256,
     ]);
-})->purpose('Process queued synchronization-center jobs and exit when the queue is empty');
+})->purpose('Queue the daily price refresh when due and process one shared-hosting-safe job');
 
 Artisan::command('sync:dispatch-daily-prices', function (ScheduledSyncDispatcher $scheduledSyncs) {
     $run = $scheduledSyncs->dispatchDailyPriceRefreshIfDue();

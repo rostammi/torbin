@@ -14,7 +14,9 @@ class StructuredDataCrawler
     public function crawl(PriceSource $source): CrawlResult
     {
         $this->assertPublicUrl($source->source_url);
-        $response = Http::timeout(25)->retry(2, 500)->withUserAgent(config('crawler.user_agent'))
+        $response = Http::timeout((int) config('crawler.price_http_timeout', 12))
+            ->retry((int) config('crawler.price_http_attempts', 1), 300)
+            ->withUserAgent(config('crawler.user_agent'))
             ->get($source->source_url)->throw();
         $body = $response->body();
         $offers = [];

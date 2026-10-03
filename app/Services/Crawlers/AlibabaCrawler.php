@@ -111,6 +111,9 @@ class AlibabaCrawler
 
     private function http(): PendingRequest
     {
-        return Http::acceptJson()->timeout(30)->retry(2, 500)->withUserAgent(config('crawler.user_agent'));
+        return Http::acceptJson()
+            ->timeout((int) config('crawler.price_http_timeout', 12))
+            ->retry((int) config('crawler.price_http_attempts', 1), 300)
+            ->withUserAgent(config('crawler.user_agent'));
     }
 }

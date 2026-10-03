@@ -12,18 +12,33 @@ class Agency extends Model
 
     public const DEFAULT_COST_PER_CLICK = 1_000;
 
-    protected $fillable = ['name', 'balance', 'cost_per_click', 'currency', 'contact_priority'];
+    protected $fillable = [
+        'name', 'balance', 'cost_per_click', 'currency', 'contact_priority',
+        'is_featured', 'is_contact_only', 'contact_phone', 'display_priority', 'is_pinned',
+    ];
 
     protected $attributes = [
         'balance' => self::DEFAULT_BALANCE,
         'cost_per_click' => self::DEFAULT_COST_PER_CLICK,
         'currency' => 'تومان',
         'contact_priority' => 100,
+        'is_featured' => false,
+        'is_contact_only' => false,
+        'display_priority' => 100,
+        'is_pinned' => false,
     ];
 
     protected function casts(): array
     {
-        return ['balance' => 'integer', 'cost_per_click' => 'integer', 'contact_priority' => 'integer'];
+        return [
+            'balance' => 'integer',
+            'cost_per_click' => 'integer',
+            'contact_priority' => 'integer',
+            'is_featured' => 'boolean',
+            'is_contact_only' => 'boolean',
+            'display_priority' => 'integer',
+            'is_pinned' => 'boolean',
+        ];
     }
 
     public function priceSources(): HasMany

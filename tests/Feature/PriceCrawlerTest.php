@@ -104,24 +104,24 @@ class PriceCrawlerTest extends TestCase
         $this->assertDatabaseHas('price_sources', ['id' => $source->id]);
     }
 
-    public function test_single_tour_price_update_checks_ten_primary_sites_then_fallback_until_three_prices(): void
+    public function test_single_tour_price_update_caps_requests_at_five_sources_and_reaches_three_prices(): void
     {
         $tour = $this->fakeTenPrimaryAndOneFallback();
 
         $this->actingAs(User::factory()->create())
             ->post(route('admin.tours.crawl', $tour))
             ->assertRedirect()
-            ->assertSessionHas('success', fn (string $message) => str_contains($message, '10 سایت اصلی')
-                && str_contains($message, '8 منبع بدون قیمت حفظ شد'));
+            ->assertSessionHas('success', fn (string $message) => str_contains($message, '4 سایت اصلی')
+                && str_contains($message, '2 منبع بدون قیمت حفظ شد'));
 
         $tour->refresh();
         $this->assertSame(11, $tour->priceSources()->count());
-        $this->assertSame(8, $tour->priceSources()->where('last_status', 'failed')->count());
+        $this->assertSame(2, $tour->priceSources()->where('last_status', 'failed')->count());
         $this->assertSame(3, $tour->priceSources()->where('latest_price', '>', 0)->count());
         $this->assertSame(8_450_000, $tour->priceSources()->where('provider_name', 'سفر۲۴ تست')->value('latest_price'));
     }
 
-    public function test_group_price_update_uses_the_same_ten_site_and_fallback_policy_per_tour(): void
+    public function test_group_price_update_uses_the_same_five_source_budget_per_tour(): void
     {
         $this->fakeTenPrimaryAndOneFallback();
 
@@ -132,9 +132,9 @@ class PriceCrawlerTest extends TestCase
 
         $run = SyncRun::where('type', 'prices')->sole();
         $this->assertSame(1, $run->details['prices']['tours']);
-        $this->assertSame(11, $run->details['prices']['checked']);
+        $this->assertSame(5, $run->details['prices']['checked']);
         $this->assertSame(1, $run->details['prices']['fallback_checked']);
-        $this->assertSame(8, $run->details['prices']['failed_sources_retained']);
+        $this->assertSame(2, $run->details['prices']['failed_sources_retained']);
         $this->assertSame(1, $run->details['prices']['with_minimum_prices']);
         $this->assertSame([], $run->details['prices']['needs_new_crawler']);
     }

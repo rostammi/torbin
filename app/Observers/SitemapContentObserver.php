@@ -20,13 +20,13 @@ class SitemapContentObserver
     {
         if ($model instanceof PriceSource && ! $model->wasChanged([
             'agency_id', 'provider_name', 'is_active', 'latest_price', 'currency',
-            'latest_rating', 'latest_rating_count', 'is_contact_only',
+            'latest_rating', 'latest_rating_count',
         ])) {
             return;
         }
 
         if ($model instanceof Agency && ! $model->wasChanged([
-            'name', 'balance', 'cost_per_click',
+            'name', 'balance', 'cost_per_click', 'is_featured', 'is_contact_only', 'display_priority', 'is_pinned',
         ])) {
             return;
         }

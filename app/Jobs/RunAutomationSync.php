@@ -18,13 +18,16 @@ class RunAutomationSync implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 86400;
+    public int $timeout;
 
     public int $tries = 1;
 
     public bool $failOnTimeout = true;
 
-    public function __construct(public int $runId, public array $retryTargets = []) {}
+    public function __construct(public int $runId, public array $retryTargets = [])
+    {
+        $this->timeout = (int) config('crawler.sync_job_timeout', 1800);
+    }
 
     public function handle(
         PriceCrawler $crawler,

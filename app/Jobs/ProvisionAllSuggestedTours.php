@@ -13,7 +13,7 @@ class ProvisionAllSuggestedTours implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 86400;
+    public int $timeout;
 
     public int $tries = 1;
 
@@ -27,7 +27,9 @@ class ProvisionAllSuggestedTours implements ShouldQueue
         public bool $referenceOnly = false,
         public array $targetSuggestionIds = [],
         public ?string $statusMode = null,
-    ) {}
+    ) {
+        $this->timeout = (int) config('crawler.sync_job_timeout', 1800);
+    }
 
     public function handle(TourProvisioner $provisioner): void
     {

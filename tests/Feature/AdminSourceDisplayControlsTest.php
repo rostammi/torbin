@@ -14,34 +14,36 @@ class AdminSourceDisplayControlsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_make_a_source_contact_only_and_pin_it_as_featured(): void
+    public function test_admin_updates_display_settings_once_for_every_offer_from_an_agency(): void
     {
-        $tour = $this->tour();
-        $source = $tour->priceSources()->create([
-            'provider_name' => 'منبع سنجاق‌شده',
-            'source_url' => 'https://93.184.216.34/offer',
-            'buy_url' => 'https://93.184.216.34/buy',
-            'extraction_type' => 'json',
-            'selector' => 'price',
-            'latest_price' => 12_000_000,
-            'is_active' => true,
+        $firstSource = $this->tour()->priceSources()->create([
+            'provider_name' => 'علی‌بابا', 'source_url' => 'https://example.com/one',
+            'extraction_type' => 'manual', 'latest_price' => 12_000_000, 'is_active' => true,
+        ]);
+        $secondSource = $this->tour()->priceSources()->create([
+            'provider_name' => 'علی‌بابا', 'source_url' => 'https://example.com/two',
+            'extraction_type' => 'manual', 'latest_price' => 13_000_000, 'is_active' => true,
         ]);
 
         $this->actingAs(User::factory()->create())
-            ->put(route('admin.sources.update', $source), $this->payload([
-                'is_contact_only' => true,
-                'contact_phone' => '021-88776655',
+            ->put(route('admin.agencies.update', $firstSource->agency), [
+                'name' => 'علی‌بابا',
+                'cost_per_click' => 1000,
+                'contact_priority' => 50,
                 'display_priority' => 25,
+                'contact_phone' => '021-88776655',
+                'is_contact_only' => true,
                 'is_pinned' => true,
-            ]))
+            ])
             ->assertRedirect();
 
-        $source->refresh();
-        $this->assertTrue($source->is_contact_only);
-        $this->assertTrue($source->is_pinned);
-        $this->assertTrue($source->is_featured);
-        $this->assertSame(25, $source->display_priority);
-        $this->assertSame('021-88776655', $source->contact_phone);
+        foreach ([$firstSource->fresh(), $secondSource->fresh()] as $source) {
+            $this->assertTrue($source->is_contact_only);
+            $this->assertTrue($source->is_pinned);
+            $this->assertTrue($source->is_featured);
+            $this->assertSame(25, $source->display_priority);
+            $this->assertSame('021-88776655', $source->contact_phone);
+        }
     }
 
     public function test_pinned_source_stays_first_after_price_crawl_and_uses_its_contact_number(): void
@@ -123,9 +125,7 @@ class AdminSourceDisplayControlsTest extends TestCase
             'extraction_type' => 'manual', 'latest_price' => 2_000_000,
         ]);
 
-        $this->actingAs(User::factory()->create())
-            ->put(route('admin.sources.update', $second), $this->payload(['is_pinned' => true]))
-            ->assertRedirect();
+        $second->update(['is_pinned' => true]);
 
         $this->assertFalse($first->fresh()->is_pinned);
         $this->assertTrue($second->fresh()->is_pinned);

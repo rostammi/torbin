@@ -15,7 +15,10 @@ class SourceUrlResolver
 {
     private const MAX_CANDIDATES = 3;
 
-    public function __construct(private readonly RejectedUrlRegistry $rejectedUrls) {}
+    public function __construct(
+        private readonly RejectedUrlRegistry $rejectedUrls,
+        private readonly DestinationMatcher $destinationMatcher,
+    ) {}
 
     public function candidates(PriceSource $source): array
     {
@@ -24,12 +27,11 @@ class SourceUrlResolver
             return [];
         }
 
-        $keyword = $this->normalize($source->selector ?: $source->tour->title);
+        $keyword = $this->destinationMatcher->normalizeDestination($source->selector ?: $source->tour->title);
         $pages = collect([
-            $source->source_url,
             $origin,
-            $origin.'/?s='.rawurlencode('تور '.$keyword),
-        ])->unique();
+            $origin.'/?s='.rawurlencode($this->categoryLabel($source).' '.$keyword),
+        ])->unique()->take(max(1, (int) config('crawler.price_url_resolution_pages', 1)));
         $candidates = collect();
 
         foreach ($pages as $pageUrl) {
@@ -39,21 +41,32 @@ class SourceUrlResolver
                 continue;
             }
 
-            foreach ($this->matchingLinks($response->body(), $pageUrl, $keyword) as $candidate) {
+            foreach ($this->matchingLinks(
+                $response->body(),
+                $pageUrl,
+                $keyword,
+                $source->tour->category ?: 'tour',
+            ) as $candidate) {
                 if ($candidate !== $source->source_url
                     && ! $this->rejectedUrls->contains($source->rejected_urls ?? [], $candidate)) {
                     $candidates->push($candidate);
                 }
-                if ($candidates->unique()->count() >= self::MAX_CANDIDATES) {
+                if ($candidates->unique()->count() >= min(
+                    self::MAX_CANDIDATES,
+                    max(1, (int) config('crawler.price_url_resolution_candidates', 1)),
+                )) {
                     break 2;
                 }
             }
         }
 
-        return $candidates->unique()->take(self::MAX_CANDIDATES)->values()->all();
+        return $candidates->unique()->take(min(
+            self::MAX_CANDIDATES,
+            max(1, (int) config('crawler.price_url_resolution_candidates', 1)),
+        ))->values()->all();
     }
 
-    private function matchingLinks(string $html, string $pageUrl, string $keyword): array
+    private function matchingLinks(string $html, string $pageUrl, string $keyword, string $category): array
     {
         $document = new DOMDocument;
         $previous = libxml_use_internal_errors(true);
@@ -71,8 +84,8 @@ class SourceUrlResolver
             $searchable = $this->normalize($anchor->textContent.' '.rawurldecode($url ?? ''));
             if ($url
                 && $this->sameHost($pageUrl, $url)
-                && str_contains($searchable, $keyword)
-                && preg_match('~(?:tour|tours|تور)~iu', $searchable)) {
+                && $this->destinationMatcher->matches($searchable, $keyword)
+                && $this->destinationMatcher->looksLikeCategoryUrl($url, $category)) {
                 $links[] = $url;
             }
         }
@@ -82,11 +95,20 @@ class SourceUrlResolver
 
     private function normalize(string $value): string
     {
-        $value = str_replace(['ي', 'ك', "\u{200C}"], ['ی', 'ک', ' '], mb_strtolower(trim($value)));
-        $value = preg_replace('/^تور(?:های)?\s+/u', '', $value) ?? $value;
+        $value = $this->destinationMatcher->normalize($value);
         $value = preg_replace('/[|\-–—].*$/u', '', $value) ?? $value;
 
         return preg_replace('/\s+/u', ' ', $value) ?? $value;
+    }
+
+    private function categoryLabel(PriceSource $source): string
+    {
+        return match ($source->tour->category) {
+            'hotel' => 'هتل',
+            'stay' => 'اقامتگاه',
+            'visa' => 'ویزا',
+            default => 'تور',
+        };
     }
 
     private function origin(string $url): ?string
@@ -134,8 +156,8 @@ class SourceUrlResolver
     private function http(): PendingRequest
     {
         return Http::accept('text/html')
-            ->timeout(20)
-            ->retry(1, 300)
+            ->timeout((int) config('crawler.price_http_timeout', 12))
+            ->retry((int) config('crawler.price_http_attempts', 1), 300)
             ->withUserAgent(config('crawler.user_agent'))
             ->withOptions(['allow_redirects' => false]);
     }

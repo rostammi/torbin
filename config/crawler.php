@@ -8,6 +8,13 @@ return [
     'trends_feed_url' => env('GOOGLE_TRENDS_FEED_URL', 'https://trends.google.com/trending/rss'),
     'suggestions_limit' => (int) env('TOUR_SUGGESTIONS_LIMIT', 120),
     'daily_price_refresh_at' => env('DAILY_PRICE_REFRESH_AT', '03:00'),
+    'price_sync_pages_per_job' => (int) env('PRICE_SYNC_PAGES_PER_JOB', 2),
+    'price_sync_max_sources_per_tour' => (int) env('PRICE_SYNC_MAX_SOURCES_PER_TOUR', 5),
+    'sync_job_timeout' => (int) env('SYNC_JOB_TIMEOUT', env('PRICE_SYNC_JOB_TIMEOUT', 1800)),
+    'price_http_timeout' => (int) env('PRICE_HTTP_TIMEOUT', 12),
+    'price_http_attempts' => (int) env('PRICE_HTTP_ATTEMPTS', 1),
+    'price_url_resolution_pages' => (int) env('PRICE_URL_RESOLUTION_PAGES', 1),
+    'price_url_resolution_candidates' => (int) env('PRICE_URL_RESOLUTION_CANDIDATES', 1),
     'dollar' => [
         'url' => env('DOLLAR_RATE_URL', 'https://www.tgju.org/profile/price_dollar_rl'),
         'cache_minutes' => (int) env('DOLLAR_RATE_CACHE_MINUTES', 10),

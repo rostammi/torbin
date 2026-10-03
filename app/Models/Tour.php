@@ -17,6 +17,7 @@ class Tour extends Model
     protected $fillable = [
         'category', 'title', 'slug', 'excerpt', 'description', 'auto_content', 'auto_content_updated_at',
         'seo_keywords', 'cover_image', 'gallery', 'image_sources', 'video_url', 'is_active',
+        'prices_checked_at',
     ];
 
     protected function casts(): array
@@ -27,6 +28,7 @@ class Tour extends Model
             'auto_content' => 'array',
             'seo_keywords' => 'array',
             'auto_content_updated_at' => 'datetime',
+            'prices_checked_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }
@@ -106,7 +108,7 @@ class Tour extends Model
     {
         $priced = $this->priceSources()
             ->where('is_active', true)
-            ->where('is_contact_only', false)
+            ->whereHas('agency', fn (Builder $agency) => $agency->where('is_contact_only', false))
             ->funded()
             ->where('latest_price', '>', 0)
             ->orderBy('latest_price')
@@ -115,13 +117,13 @@ class Tour extends Model
 
         $forcedContactSources = $this->priceSources()
             ->where('is_active', true)
-            ->where('is_contact_only', true)
+            ->whereHas('agency', fn (Builder $agency) => $agency->where('is_contact_only', true))
             ->with('agency')
             ->get();
 
         $contactSource = $this->priceSources()
             ->where('is_active', true)
-            ->where('is_contact_only', false)
+            ->whereHas('agency', fn (Builder $agency) => $agency->where('is_contact_only', false))
             ->where(fn (Builder $query) => $query
                 ->whereNull('latest_price')
                 ->orWhere('latest_price', '<=', 0))

@@ -15,13 +15,16 @@ use App\Jobs\SyncCenter\RefreshContentJob;
 use App\Jobs\SyncCenter\RefreshPricesJob;
 use App\Jobs\SyncCenter\RunFullSyncJob;
 use App\Models\SyncRun;
+use App\Models\Tour;
 use App\Models\User;
 use App\Services\ScheduledSyncDispatcher;
+use App\Services\TourPriceUpdater;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
+use Mockery;
 use Tests\TestCase;
 
 class SyncCenterJobsTest extends TestCase
@@ -62,6 +65,42 @@ class SyncCenterJobsTest extends TestCase
     public function test_shared_hosting_queue_worker_command_is_registered(): void
     {
         $this->assertArrayHasKey('sync:work', Artisan::all());
+    }
+
+    public function test_price_refresh_processes_only_one_small_page_per_invocation(): void
+    {
+        Queue::fake();
+        config()->set('crawler.price_sync_pages_per_job', 1);
+        foreach (range(1, 3) as $number) {
+            Tour::create([
+                'title' => "تور آزمایشی {$number}",
+                'slug' => "chunked-price-tour-{$number}",
+                'description' => 'توضیحات',
+                'is_active' => true,
+            ]);
+        }
+        $run = SyncRun::create(['type' => 'prices', 'started_at' => now()]);
+
+        $updater = Mockery::mock(TourPriceUpdater::class);
+        $updater->shouldReceive('update')->once()->andReturn([
+            'checked' => 3,
+            'crawl_successful' => 3,
+            'failed_sources_retained' => 0,
+            'fallback_checked' => 0,
+            'target_met' => true,
+            'needs_new_crawler' => false,
+            'prices_found' => 3,
+        ]);
+
+        (new RefreshPricesJob($run->id))->handle($updater);
+
+        $run->refresh();
+        $this->assertSame(3, $run->total);
+        $this->assertSame(1, $run->successful);
+        $this->assertSame(0, $run->failed);
+        $this->assertSame('running', $run->status);
+        $this->assertSame(1, Tour::whereNotNull('prices_checked_at')->count());
+        Queue::assertNothingPushed();
     }
 
     public function test_daily_price_refresh_is_queued_only_once_after_the_configured_time(): void

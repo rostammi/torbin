@@ -13,7 +13,7 @@ class CrawlMissingTourImages implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 86400;
+    public int $timeout;
 
     public int $tries = 1;
 
@@ -23,7 +23,9 @@ class CrawlMissingTourImages implements ShouldQueue
         public int $runId,
         public ?string $category = null,
         public array $targetTourIds = [],
-    ) {}
+    ) {
+        $this->timeout = (int) config('crawler.sync_job_timeout', 1800);
+    }
 
     public function handle(TourImageCrawler $crawler): void
     {

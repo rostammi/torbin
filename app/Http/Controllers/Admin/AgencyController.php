@@ -8,6 +8,7 @@ use App\Models\SiteSetting;
 use App\Services\Billing\AgencyBillingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -37,12 +38,39 @@ class AgencyController extends Controller
     public function update(Request $request, Agency $agency): RedirectResponse
     {
         $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:120', Rule::unique('agencies', 'name')->ignore($agency)],
             'cost_per_click' => ['required', 'integer', 'min:0', 'max:1000000000'],
-            'contact_priority' => ['sometimes', 'required', 'integer', 'min:0', 'max:100000'],
+            'contact_priority' => ['required', 'integer', 'min:0', 'max:100000'],
+            'display_priority' => ['sometimes', 'required', 'integer', 'min:0', 'max:10000'],
+            'contact_phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9۰-۹٠-٩+()\s-]+$/u'],
+            'is_featured' => ['nullable', 'boolean'],
+            'is_contact_only' => ['nullable', 'boolean'],
+            'is_pinned' => ['nullable', 'boolean'],
+        ], [
+            'contact_phone.regex' => 'شماره تماس فقط می‌تواند شامل رقم، فاصله، خط تیره، پرانتز و علامت + باشد.',
         ]);
-        $agency->update($data);
+        $data['name'] = trim($data['name'] ?? $agency->name);
+        $data['display_priority'] = $data['display_priority'] ?? $agency->display_priority;
+        $data['contact_phone'] = trim((string) ($data['contact_phone'] ?? '')) ?: null;
+        $data['is_featured'] = $request->boolean('is_featured');
+        $data['is_contact_only'] = $request->boolean('is_contact_only');
+        $data['is_pinned'] = $request->boolean('is_pinned');
+        if ($data['is_pinned']) {
+            $data['is_featured'] = true;
+        }
 
-        return back()->with('success', "هزینه هر کلیک {$agency->name} ذخیره شد.");
+        DB::transaction(function () use ($agency, $data) {
+            $oldName = $agency->name;
+            if ($data['is_pinned']) {
+                Agency::query()->whereKeyNot($agency->id)->update(['is_pinned' => false]);
+            }
+            $agency->update($data);
+            if ($oldName !== $agency->name) {
+                $agency->priceSources()->update(['provider_name' => $agency->name]);
+            }
+        });
+
+        return back()->with('success', "تنظیمات عمومی منبع {$agency->name} روی همه پیشنهادهایش اعمال شد.");
     }
 
     public function updateComparisonContact(Request $request): RedirectResponse

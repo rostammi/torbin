@@ -49,13 +49,13 @@ php artisan schedule:work
 php artisan queue:work --timeout=1800
 ```
 
-On shared hosting, synchronization-center actions use the dedicated database queue named `sync`. Add this single cron entry, replacing the PHP binary and project path with the values from the hosting control panel:
+On shared hosting, synchronization-center actions use the dedicated database queue named `sync`. Upload `cron.php` to the project root and run it every minute. In a PHP-script-only control panel, enter `/home/USER/geyt/cron.php`; in a normal cron command field use:
 
 ```cron
-*/5 * * * * cd /home/USER/geyt && /usr/local/bin/php artisan sync:work >> storage/logs/sync-cron.log 2>&1
+* * * * * /usr/local/bin/php /home/USER/geyt/cron.php
 ```
 
-The command starts at most five minutes after an administrator queues an action, automatically queues the daily price refresh after `DAILY_PRICE_REFRESH_AT` (03:00 by default), processes the `sync` queue until it is empty, and then exits. Keep `QUEUE_CONNECTION=database` and run `php artisan migrate --force` during deployment so the queue tables exist. No separate scheduler cron is required on shared hosting.
+Each invocation runs the Laravel scheduler, queues the daily price refresh once after `DAILY_PRICE_REFRESH_AT` (03:00 by default), and processes one queued job before exiting. Price refreshes process up to two tours per job by default, update their progress after every tour, and continue on later cron ticks. Keep `QUEUE_CONNECTION=database`, `SYNC_JOB_TIMEOUT=1800`, `DB_QUEUE_RETRY_AFTER=2100`, and run `php artisan migrate --force` during deployment so the queue tables exist. No separate scheduler cron is required on shared hosting.
 
 The image crawler uses PHP GD when available and otherwise uses `ffmpeg` to upscale and center-crop the largest undersized Wikimedia image. Keep one of these image processors installed on every queue-worker host.
 

@@ -12,7 +12,7 @@ abstract class MissingImagesJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 86400;
+    public int $timeout;
 
     public int $tries = 1;
 
@@ -20,6 +20,7 @@ abstract class MissingImagesJob implements ShouldQueue
 
     public function __construct(public int $runId, public array $targetTourIds = [])
     {
+        $this->timeout = (int) config('crawler.sync_job_timeout', 1800);
         $this->onQueue('sync');
     }
 

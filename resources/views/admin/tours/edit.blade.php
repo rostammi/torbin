@@ -71,6 +71,7 @@
 
         <form class="panel admin-form" action="{{ route('admin.sources.store', $tour) }}" method="post">
             @csrf
+            <datalist id="agency-names">@foreach($agencyNames as $agencyName)<option value="{{ $agencyName }}">@endforeach</datalist>
             <h3>افزودن منبع جدید</h3>
             @include('admin.sources._fields', ['source' => new \App\Models\PriceSource])
             <button class="button" type="submit">افزودن منبع</button>
@@ -104,18 +105,7 @@
                     </form>
                     <div class="source-actions">
                         @if($source->extraction_type !== 'manual')<form method="post" action="{{ route('admin.sources.crawl', $source) }}">@csrf<button class="button button-secondary">اجرای آزمایشی</button></form>@endif
-                        <form method="post" action="{{ route('admin.agencies.featured') }}">
-                            @csrf @method('PUT')
-                            <input type="hidden" name="provider_name" value="{{ $source->provider_name }}">
-                            <input type="hidden" name="is_featured" value="1">
-                            <button class="button button-featured" type="submit">ویژه‌کردن همه پیشنهادهای {{ $source->provider_name }}</button>
-                        </form>
-                        <form method="post" action="{{ route('admin.agencies.featured') }}">
-                            @csrf @method('PUT')
-                            <input type="hidden" name="provider_name" value="{{ $source->provider_name }}">
-                            <input type="hidden" name="is_featured" value="0">
-                            <button class="button button-secondary" type="submit">حذف نشان ویژه از همه</button>
-                        </form>
+                        <a class="button button-secondary" href="{{ route('admin.agencies.index') }}">ویرایش تنظیمات عمومی {{ $source->provider_name }}</a>
                         <form method="post" action="{{ route('admin.sources.destroy', $source) }}" onsubmit="return confirm('منبع حذف شود؟')">@csrf @method('DELETE')<button class="button button-danger">حذف منبع</button></form>
                     </div>
                 </details>

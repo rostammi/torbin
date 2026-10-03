@@ -1,5 +1,5 @@
 <div class="form-grid">
-    <label>نام سایت *<input name="provider_name" value="{{ old('provider_name', $source->provider_name) }}" required placeholder="مثلاً علی‌بابا"></label>
+    <label>نام سایت *<input list="agency-names" name="provider_name" value="{{ old('provider_name', $source->provider_name) }}" required placeholder="مثلاً علی‌بابا"></label>
     <label>نوع خواندن قیمت
         <select name="extraction_type" required>
             @foreach(['alibaba'=>'علی‌بابا (اختصاصی)', 'flytoday'=>'فلای‌تودی (اختصاصی)', 'safarmarket'=>'سفرمارکت (اختصاصی)', 'marketplace_html'=>'فروشگاه تور HTML (مقصد‌محور)', 'structured'=>'داده ساختاریافته (خودکار)', 'regex'=>'Regex از HTML', 'json'=>'مسیر JSON', 'manual'=>'قیمت دستی'] as $value=>$label)<option value="{{ $value }}" @selected(old('extraction_type', $source->extraction_type ?: 'regex') === $value)>{{ $label }}</option>@endforeach
@@ -25,17 +25,7 @@
     </select>
     <small>قیمت دلاری با نرخ دلار آزاد TGJU به تومان تبدیل می‌شود. برای JSON عددیِ بدون واحد، واحد را صریح انتخاب کنید.</small>
 </label>
-<div class="form-grid">
-    <label>اولویت نمایش
-        <input type="number" min="0" max="10000" name="display_priority" value="{{ old('display_priority', $source->display_priority ?? 100) }}">
-        <small>عدد کمتر زودتر نمایش داده می‌شود؛ منابع هم‌اولویت بر اساس قیمت مرتب می‌شوند.</small>
-    </label>
-    <label>شماره تماس اختصاصی
-        <input type="tel" dir="ltr" name="contact_phone" value="{{ old('contact_phone', $source->contact_phone) }}" placeholder="{{ \App\Models\SiteSetting::comparisonContactPhone() }}">
-        <small>اگر خالی باشد، شماره تماس پیش‌فرض سایت استفاده می‌شود.</small>
-    </label>
+<div class="content-crawl-status">
+    تنظیمات عمومی این ارائه‌دهنده مانند شماره تماس، نوع نمایش، اولویت و نشان ویژه از <a href="{{ route('admin.agencies.index') }}">صفحه منابع مرکزی</a> مدیریت می‌شود.
 </div>
 <label class="check-label"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $source->exists ? $source->is_active : true))> منبع فعال باشد</label>
-<label class="check-label"><input type="checkbox" name="is_featured" value="1" @checked(old('is_featured', $source->is_featured))> این پیشنهاد «پیشنهاد ویژه» باشد</label>
-<label class="check-label"><input type="checkbox" name="is_contact_only" value="1" @checked(old('is_contact_only', $source->is_contact_only))> به‌جای لینک خرید، دکمه «تماس بگیرید» نمایش داده شود</label>
-<label class="check-label"><input type="checkbox" name="is_pinned" value="1" @checked(old('is_pinned', $source->is_pinned))> این منبع همیشه ابتدای لیست باشد <small>(خودکار پیشنهاد ویژه می‌شود)</small></label>

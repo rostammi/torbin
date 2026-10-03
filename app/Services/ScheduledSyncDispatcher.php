@@ -23,6 +23,16 @@ class ScheduledSyncDispatcher
         $date = $now->toDateString();
 
         return Cache::lock("sync:daily-prices:{$date}", 60)->block(5, function () use ($date) {
+            $running = SyncRun::query()
+                ->where('type', 'prices')
+                ->where('status', 'running')
+                ->whereNull('finished_at')
+                ->latest('id')
+                ->first();
+            if ($running) {
+                return $running;
+            }
+
             $existing = SyncRun::query()
                 ->where('type', 'prices')
                 ->where('details->scheduled_date', $date)
@@ -50,5 +60,28 @@ class ScheduledSyncDispatcher
 
             return $run;
         });
+    }
+
+    public function resumeRunningPriceRefresh(?SyncRun $run = null): ?SyncRun
+    {
+        $run ??= SyncRun::query()
+            ->where('type', 'prices')
+            ->where('status', 'running')
+            ->whereNull('finished_at')
+            ->latest('id')
+            ->first();
+
+        if (! $run || $run->status !== 'running' || $run->finished_at) {
+            return null;
+        }
+
+        $targetIds = data_get($run->details, 'price_target_ids', []);
+        $this->dispatcher->dispatch(
+            'prices',
+            $run->id,
+            $targetIds === [] ? [] : ['prices' => $targetIds],
+        );
+
+        return $run;
     }
 }

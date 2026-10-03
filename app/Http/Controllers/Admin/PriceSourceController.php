@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Agency;
 use App\Models\PriceSource;
 use App\Models\Tour;
 use App\Services\Alerts\PriceAlertNotifier;
@@ -10,7 +11,6 @@ use App\Services\Discovery\ProviderCatalog;
 use App\Services\PriceCrawler;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class PriceSourceController extends Controller
@@ -25,48 +25,40 @@ class PriceSourceController extends Controller
 
     public function store(Request $request, Tour $tour, PriceAlertNotifier $alerts): RedirectResponse
     {
-        DB::transaction(function () use ($request, $tour) {
-            $source = $tour->priceSources()->create($this->validated($request));
-            $this->applyPinnedState($source);
-        });
+        $tour->priceSources()->create($this->validated($request));
         $alerts->notifyForTour($tour);
 
-        return back()->with('success', 'منبع قیمت اضافه شد.');
+        return back()->with('success', 'منبع قیمت اضافه شد؛ تنظیمات عمومی آن از صفحه منابع مرکزی مدیریت می‌شود.');
     }
 
     public function update(Request $request, PriceSource $source, PriceAlertNotifier $alerts): RedirectResponse
     {
-        DB::transaction(function () use ($request, $source) {
-            $source->update($this->validated($request, $source));
-            $this->applyPinnedState($source);
-        });
+        $source->update($this->validated($request));
         $alerts->notifyForTour($source->tour);
 
-        return back()->with('success', 'منبع قیمت به‌روزرسانی شد.');
+        return back()->with('success', 'اطلاعات قیمت و لینک این پیشنهاد به‌روزرسانی شد.');
     }
 
     public function updateAgencyFeatured(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'provider_name' => ['required', 'string', 'max:120', Rule::exists('price_sources', 'provider_name')],
+            'provider_name' => ['required', 'string', 'max:120', Rule::exists('agencies', 'name')],
             'is_featured' => ['required', 'boolean'],
         ]);
 
-        $count = PriceSource::query()
-            ->where('provider_name', $data['provider_name'])
-            ->when(! $data['is_featured'], fn ($query) => $query->where('is_pinned', false))
-            ->update(['is_featured' => (bool) $data['is_featured']]);
+        $agency = Agency::query()->where('name', $data['provider_name'])->firstOrFail();
+        $isFeatured = (bool) $data['is_featured'] || $agency->is_pinned;
+        $agency->update(['is_featured' => $isFeatured]);
+        $action = $isFeatured ? 'ویژه شدند' : 'از حالت ویژه خارج شدند';
 
-        $action = $data['is_featured'] ? 'ویژه شدند' : 'از حالت ویژه خارج شدند';
-
-        return back()->with('success', "{$count} پیشنهاد از آژانس {$data['provider_name']} {$action}.");
+        return back()->with('success', "همه پیشنهادهای آژانس {$agency->name} {$action}.");
     }
 
     public function destroy(PriceSource $source): RedirectResponse
     {
         $source->delete();
 
-        return back()->with('success', 'منبع قیمت حذف شد.');
+        return back()->with('success', 'منبع قیمت از این پیشنهاد حذف شد.');
     }
 
     public function crawl(PriceSource $source, PriceCrawler $crawler, PriceAlertNotifier $alerts): RedirectResponse
@@ -81,7 +73,7 @@ class PriceSourceController extends Controller
         );
     }
 
-    private function validated(Request $request, ?PriceSource $source = null): array
+    private function validated(Request $request): array
     {
         $type = $request->input('extraction_type');
         $data = $request->validate([
@@ -95,22 +87,9 @@ class PriceSourceController extends Controller
             'currency' => ['required', Rule::in(['تومان', 'ریال'])],
             'source_currency' => ['nullable', Rule::in(['auto', 'toman', 'rial', 'usd', 'mixed'])],
             'is_active' => ['nullable', 'boolean'],
-            'is_featured' => ['nullable', 'boolean'],
-            'is_contact_only' => ['nullable', 'boolean'],
-            'contact_phone' => ['nullable', 'string', 'max:40'],
-            'display_priority' => ['nullable', 'integer', 'min:0', 'max:10000'],
-            'is_pinned' => ['nullable', 'boolean'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
-        $data['is_featured'] = $request->boolean('is_featured');
-        $data['is_contact_only'] = $request->boolean('is_contact_only');
-        $data['is_pinned'] = $request->boolean('is_pinned');
-        $data['display_priority'] = $data['display_priority'] ?? $source?->display_priority ?? 100;
-        $data['contact_phone'] = trim((string) ($data['contact_phone'] ?? '')) ?: null;
-        if ($data['is_pinned']) {
-            $data['is_featured'] = true;
-        }
         $data['source_currency'] = $data['source_currency'] ?? 'auto';
         $data['buy_url'] = $data['buy_url'] ?: $data['source_url'];
         if ($type === 'manual') {
@@ -119,17 +98,5 @@ class PriceSourceController extends Controller
         }
 
         return $data;
-    }
-
-    private function applyPinnedState(PriceSource $source): void
-    {
-        if (! $source->is_pinned) {
-            return;
-        }
-
-        PriceSource::query()
-            ->where('tour_id', $source->tour_id)
-            ->where('id', '!=', $source->id)
-            ->update(['is_pinned' => false]);
     }
 }

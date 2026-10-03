@@ -182,6 +182,38 @@ class OfficialCrawlersTest extends TestCase
         $this->assertSame(8_750_000, $source->fresh()->latest_price);
     }
 
+    public function test_marketplace_html_matches_van_as_a_complete_word_and_rejects_eyvan(): void
+    {
+        Http::fake(['93.184.216.34/*' => Http::response(<<<'HTML'
+            <html><body>
+                <article><a href="/hotels/eyvan-tehran">هتل آپارتمان ایوان تهران <span>۲,۰۰۰,۰۰۰ تومان</span></a></article>
+                <article><a href="/hotels/van">هتل وان <span>۱۲,۵۰۰,۰۰۰ تومان</span></a></article>
+            </body></html>
+            HTML)]);
+        $source = $this->source('marketplace_html', 'https://93.184.216.34/hotels');
+        $source->tour->update(['category' => 'hotel', 'title' => 'هتل وان']);
+        $source->update(['selector' => 'وان']);
+
+        $this->assertTrue(app(PriceCrawler::class)->crawl($source));
+        $this->assertSame(12_500_000, $source->fresh()->latest_price);
+        $this->assertSame('https://93.184.216.34/hotels/van', $source->fresh()->buy_url);
+    }
+
+    public function test_marketplace_html_replaces_an_unrelated_deep_link_with_the_provider_homepage(): void
+    {
+        Http::fake(['93.184.216.34/*' => Http::response(<<<'HTML'
+            <html><head><title>هتل آپارتمان ایوان تهران</title></head>
+            <body><span class="price">۲,۰۰۰,۰۰۰ تومان</span></body></html>
+            HTML)]);
+        $source = $this->source('marketplace_html', 'https://93.184.216.34/hotels/eyvan-tehran');
+        $source->tour->update(['category' => 'hotel', 'title' => 'هتل وان']);
+        $source->update(['selector' => 'وان']);
+
+        $this->assertTrue(app(PriceCrawler::class)->crawl($source));
+        $this->assertSame(0, $source->fresh()->latest_price);
+        $this->assertSame('https://93.184.216.34/', $source->fresh()->buy_url);
+    }
+
     public function test_safar24_crawler_selects_only_the_requested_destination_and_lowest_price(): void
     {
         Http::fake(['93.184.216.34/*' => Http::response(<<<'HTML'

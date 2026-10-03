@@ -100,6 +100,9 @@ class FlytodayCrawler
 
     private function http(): PendingRequest
     {
-        return Http::accept('text/html')->timeout(30)->retry(2, 500)->withUserAgent(config('crawler.user_agent'));
+        return Http::accept('text/html')
+            ->timeout((int) config('crawler.price_http_timeout', 12))
+            ->retry((int) config('crawler.price_http_attempts', 1), 300)
+            ->withUserAgent(config('crawler.user_agent'));
     }
 }

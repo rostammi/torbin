@@ -23,10 +23,9 @@ class ProviderCatalog
     public function attachProvider(Tour $tour, string $destination, array $provider)
     {
         $url = $provider['url'];
-
-        return $tour->priceSources()->updateOrCreate(['provider_name' => $provider['name']], [
+        $source = $tour->priceSources()->firstOrNew(['provider_name' => $provider['name']]);
+        $source->fill([
             'source_url' => $url,
-            'buy_url' => $url,
             'extraction_type' => $provider['type'],
             'selector' => $destination,
             'price_multiplier' => 1,
@@ -34,5 +33,11 @@ class ProviderCatalog
             'source_currency' => $provider['source_currency'] ?? 'auto',
             'is_active' => true,
         ]);
+        if (! $source->exists || blank($source->buy_url)) {
+            $source->buy_url = $url;
+        }
+        $source->save();
+
+        return $source;
     }
 }

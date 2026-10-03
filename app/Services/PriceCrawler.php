@@ -33,14 +33,14 @@ class PriceCrawler
         private readonly PriceCurrencyConverter $currencyConverter,
     ) {}
 
-    public function crawl(PriceSource $source, bool $deactivateOnFailure = false): bool
+    public function crawl(PriceSource $source, bool $deactivateOnFailure = false, bool $refreshContent = true): bool
     {
         try {
             if ($source->extraction_type === 'manual') {
                 throw new RuntimeException('این منبع دستی است و نیازی به کراول ندارد.');
             }
 
-            return $this->storeResult($source, $this->extract($source));
+            return $this->storeResult($source, $this->extract($source), $refreshContent);
         } catch (Throwable $exception) {
             foreach ($this->sourceUrlResolver->candidates($source) as $candidate) {
                 $originalSourceUrl = $source->source_url;
@@ -49,7 +49,7 @@ class PriceCrawler
                     $source->setAttribute('source_url', $candidate);
                     $source->setAttribute('buy_url', $candidate);
 
-                    return $this->storeResult($source, $this->extract($source));
+                    return $this->storeResult($source, $this->extract($source), $refreshContent);
                 } catch (Throwable $retryException) {
                     $source->setAttribute('source_url', $originalSourceUrl);
                     $source->setAttribute('buy_url', $originalBuyUrl);
@@ -57,7 +57,6 @@ class PriceCrawler
                 }
             }
 
-            $tour = $source->tour;
             $source->update([
                 'latest_price' => null,
                 'is_active' => $deactivateOnFailure ? false : $source->is_active,
@@ -66,10 +65,12 @@ class PriceCrawler
                 'last_checked_at' => now(),
             ]);
 
-            try {
-                $this->contentCompiler->refresh($tour);
-            } catch (Throwable $contentException) {
-                report($contentException);
+            if ($refreshContent) {
+                try {
+                    $this->contentCompiler->refresh($source->tour);
+                } catch (Throwable $contentException) {
+                    report($contentException);
+                }
             }
 
             report($exception);
@@ -78,7 +79,7 @@ class PriceCrawler
         }
     }
 
-    private function storeResult(PriceSource $source, CrawlResult $result): bool
+    private function storeResult(PriceSource $source, CrawlResult $result, bool $refreshContent): bool
     {
         $source->update([
             'source_url' => $source->source_url,
@@ -107,7 +108,9 @@ class PriceCrawler
             'observed_at' => now(),
         ]);
 
-        $this->enrichContent($source->fresh(), $result);
+        if ($refreshContent) {
+            $this->enrichContent($source->fresh(), $result);
+        }
 
         return true;
     }

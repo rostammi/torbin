@@ -20,6 +20,7 @@ class MarketplaceHtmlCrawler
     public function __construct(
         private readonly RejectedUrlRegistry $rejectedUrls,
         private readonly PriceCurrencyConverter $currencyConverter,
+        private readonly DestinationMatcher $destinationMatcher,
     ) {}
 
     public function crawl(PriceSource $source): CrawlResult
@@ -34,7 +35,10 @@ class MarketplaceHtmlCrawler
         $links = $this->withoutRejectedLinks($links, $source);
 
         if ($offers === []) {
-            foreach (array_slice($links, 0, self::MAX_DESTINATION_PAGES) as $url) {
+            foreach (array_slice($links, 0, min(
+                self::MAX_DESTINATION_PAGES,
+                max(1, (int) config('crawler.price_url_resolution_pages', 1)),
+            )) as $url) {
                 $this->assertPublicUrl($url);
                 [$pageOffers] = $this->inspect($this->fetch($url), $url, $keyword, $source);
                 $offers = array_merge($offers, $this->withoutRejectedUrls($pageOffers, $source));
@@ -43,7 +47,7 @@ class MarketplaceHtmlCrawler
         }
 
         if ($offers === []) {
-            return new CrawlResult(0, $links[0] ?? $source->source_url, details: [
+            return new CrawlResult(0, $links[0] ?? $this->originUrl($source->source_url), details: [
                 'destination' => $keyword,
                 'pages_checked' => $pagesChecked,
             ]);
@@ -89,12 +93,12 @@ class MarketplaceHtmlCrawler
             }
 
             $anchorText = $this->normalize($anchor->textContent);
-            if (! str_contains($anchorText, $keyword)) {
+            if (! $this->destinationMatcher->matches($anchorText, $keyword)) {
                 continue;
             }
 
             $url = $this->absoluteUrl($pageUrl, $anchor->getAttribute('href'));
-            if ($url && $this->sameHost($pageUrl, $url) && $this->looksLikeTourUrl($url)) {
+            if ($url && $this->sameHost($pageUrl, $url) && $this->looksLikeDestinationUrl($url, $source)) {
                 $links[$url] = $url;
             }
 
@@ -281,7 +285,7 @@ class MarketplaceHtmlCrawler
 
                 return $query === ''
                     && ! preg_match('~/(?:tourinfo|package|offer|booking|checkout)(?:/|$)~iu', $path)
-                    && str_contains($this->normalize($path), $keyword);
+                    && $this->destinationMatcher->matches($path, $keyword);
             })
             ->sortBy(fn (string $url) => mb_strlen((string) parse_url($url, PHP_URL_PATH)))
             ->first();
@@ -296,11 +300,28 @@ class MarketplaceHtmlCrawler
         $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
         $keyword = $this->destinationKeyword($source);
         $slug = str_replace(' ', '-', $keyword);
-        $candidates = [
-            $origin.'/'.rawurlencode('تور-'.$slug),
-            $origin.'/tour-'.rawurlencode($slug),
-            $origin.'/tours/'.rawurlencode($slug),
-        ];
+        $candidates = match ($source->tour->category) {
+            'hotel' => [
+                $origin.'/hotel/'.rawurlencode($slug),
+                $origin.'/hotels/'.rawurlencode($slug),
+                $origin.'/'.rawurlencode('هتل-'.$slug),
+            ],
+            'stay' => [
+                $origin.'/accommodation/'.rawurlencode($slug),
+                $origin.'/stays/'.rawurlencode($slug),
+                $origin.'/'.rawurlencode('اقامتگاه-'.$slug),
+            ],
+            'visa' => [
+                $origin.'/visa/'.rawurlencode($slug),
+                $origin.'/visas/'.rawurlencode($slug),
+                $origin.'/'.rawurlencode('ویزای-'.$slug),
+            ],
+            default => [
+                $origin.'/'.rawurlencode('تور-'.$slug),
+                $origin.'/tour-'.rawurlencode($slug),
+                $origin.'/tours/'.rawurlencode($slug),
+            ],
+        };
 
         foreach ($candidates as $candidate) {
             if ($this->rejectedUrls->contains($source->rejected_urls ?? [], $candidate)) {
@@ -328,7 +349,7 @@ class MarketplaceHtmlCrawler
         libxml_use_internal_errors($previous);
 
         foreach ((new DOMXPath($document))->query('//h1|//title') ?: [] as $node) {
-            if (str_contains($this->normalize($node->textContent), $keyword)) {
+            if ($this->destinationMatcher->matches($node->textContent, $keyword)) {
                 return true;
             }
         }
@@ -339,7 +360,7 @@ class MarketplaceHtmlCrawler
     private function pageTargetsDestination(DOMXPath $xpath, string $keyword): bool
     {
         foreach ($xpath->query('//h1|//title') ?: [] as $node) {
-            if (str_contains($this->normalize($node->textContent), $keyword)) {
+            if ($this->destinationMatcher->matches($node->textContent, $keyword)) {
                 return true;
             }
         }
@@ -361,15 +382,12 @@ class MarketplaceHtmlCrawler
 
     private function destinationKeyword(PriceSource $source): string
     {
-        return $this->normalize($source->selector ?: $source->tour->title);
+        return $this->destinationMatcher->normalizeDestination($source->selector ?: $source->tour->title);
     }
 
     private function normalize(string $value): string
     {
-        $value = str_replace(['ي', 'ك', "\u{200C}"], ['ی', 'ک', ' '], mb_strtolower(trim($value)));
-        $value = preg_replace('/^تور(?:های)?\s+/u', '', $value) ?? $value;
-
-        return preg_replace('/\s+/u', ' ', $value) ?? $value;
+        return $this->destinationMatcher->normalize($value);
     }
 
     private function digits(string $value): int
@@ -411,9 +429,19 @@ class MarketplaceHtmlCrawler
         return mb_strtolower((string) parse_url($first, PHP_URL_HOST)) === mb_strtolower((string) parse_url($second, PHP_URL_HOST));
     }
 
-    private function looksLikeTourUrl(string $url): bool
+    private function originUrl(string $url): string
     {
-        return preg_match('~(?:tour|tours|تور)~iu', rawurldecode($url)) === 1;
+        $parts = parse_url($url);
+        if (! isset($parts['scheme'], $parts['host'])) {
+            return $url;
+        }
+
+        return $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '').'/';
+    }
+
+    private function looksLikeDestinationUrl(string $url, PriceSource $source): bool
+    {
+        return $this->destinationMatcher->looksLikeCategoryUrl($url, $source->tour->category ?: 'tour');
     }
 
     private function fetch(string $url): string
@@ -424,8 +452,8 @@ class MarketplaceHtmlCrawler
     private function http(): PendingRequest
     {
         return Http::accept('text/html')
-            ->timeout(30)
-            ->retry(2, 500)
+            ->timeout((int) config('crawler.price_http_timeout', 12))
+            ->retry((int) config('crawler.price_http_attempts', 1), 300)
             ->withUserAgent(config('crawler.user_agent'))
             ->withOptions(['allow_redirects' => false]);
     }

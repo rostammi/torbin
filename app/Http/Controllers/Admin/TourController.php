@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\AddTourImages;
 use App\Jobs\ConvertTourImagesToWebp;
 use App\Jobs\RefreshTourImages;
+use App\Models\Agency;
 use App\Models\SyncRun;
 use App\Models\Tour;
 use App\Services\Alerts\PriceAlertNotifier;
@@ -64,11 +65,14 @@ class TourController extends Controller
     public function edit(Tour $tour): View
     {
         $tour->load(['priceSources' => fn ($query) => $query
-            ->orderByDesc('is_pinned')
-            ->orderBy('display_priority')
+            ->with('agency')
+            ->orderByDesc(Agency::query()->select('is_pinned')->whereColumn('agencies.id', 'price_sources.agency_id')->limit(1))
+            ->orderBy(Agency::query()->select('display_priority')->whereColumn('agencies.id', 'price_sources.agency_id')->limit(1))
             ->orderBy('latest_price')]);
 
-        return view('admin.tours.edit', compact('tour'));
+        $agencyNames = Agency::query()->orderBy('name')->pluck('name');
+
+        return view('admin.tours.edit', compact('tour', 'agencyNames'));
     }
 
     public function update(Request $request, Tour $tour): RedirectResponse

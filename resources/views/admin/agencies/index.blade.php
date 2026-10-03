@@ -41,11 +41,23 @@
                         <div><span>هزینه هر کلیک</span><b>{{ number_format($agency->cost_per_click) }}</b></div>
                     </div>
 
-                    <form class="agency-inline-form" method="post" action="{{ route('admin.agencies.update', $agency) }}">
+                    <form class="admin-form agency-inline-form" method="post" action="{{ route('admin.agencies.update', $agency) }}">
                         @csrf @method('PUT')
-                        <label>هزینه هر کلیک (تومان)<input type="number" min="0" name="cost_per_click" value="{{ $agency->cost_per_click }}" required></label>
-                        <label>اولویت تماس<input type="number" min="0" max="100000" name="contact_priority" value="{{ $agency->contact_priority }}" required><small>عدد کمتر، اولویت بالاتر</small></label>
-                        <button class="button" type="submit">ذخیره تنظیمات</button>
+                        <h3>تنظیمات عمومی منبع</h3>
+                        <p class="muted">این تنظیمات روی تمام پیشنهادهای {{ $agency->name }} در همه تورها، هتل‌ها و سایر دسته‌ها اعمال می‌شود.</p>
+                        <div class="form-grid">
+                            <label>نام منبع<input name="name" value="{{ old('name', $agency->name) }}" required maxlength="120"></label>
+                            <label>شماره تماس اختصاصی<input type="tel" dir="ltr" name="contact_phone" value="{{ old('contact_phone', $agency->contact_phone) }}" placeholder="{{ $comparisonContactPhone }}"></label>
+                        </div>
+                        <div class="form-grid thirds">
+                            <label>اولویت نمایش<input type="number" min="0" max="10000" name="display_priority" value="{{ $agency->display_priority }}" required><small>عدد کمتر، نمایش زودتر</small></label>
+                            <label>اولویت تماس<input type="number" min="0" max="100000" name="contact_priority" value="{{ $agency->contact_priority }}" required><small>برای منابع بدون قیمت</small></label>
+                            <label>هزینه هر کلیک<input type="number" min="0" name="cost_per_click" value="{{ $agency->cost_per_click }}" required></label>
+                        </div>
+                        <label class="check-label"><input type="checkbox" name="is_contact_only" value="1" @checked($agency->is_contact_only)> همیشه به‌جای لینک خرید، شماره تماس نمایش داده شود</label>
+                        <label class="check-label"><input type="checkbox" name="is_featured" value="1" @checked($agency->is_featured)> همه پیشنهادهای این منبع نشان «پیشنهاد ویژه» داشته باشند</label>
+                        <label class="check-label"><input type="checkbox" name="is_pinned" value="1" @checked($agency->is_pinned)> این منبع در همه صفحات ابتدای فهرست باشد <small>(خودکار ویژه می‌شود)</small></label>
+                        <button class="button" type="submit">اعمال روی همه پیشنهادها</button>
                     </form>
 
                     <form class="agency-balance-form" method="post" action="{{ route('admin.agencies.balance', $agency) }}">
