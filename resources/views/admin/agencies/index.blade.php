@@ -13,18 +13,50 @@
             <div class="validation-errors"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
         @endif
 
-        <form class="panel admin-form comparison-contact-settings" method="post" action="{{ route('admin.agencies.comparison-contact') }}">
+        <form class="panel admin-form comparison-contact-settings category-contact-settings" method="post" action="{{ route('admin.agencies.comparison-contact') }}">
             @csrf @method('PUT')
             <div>
                 <span class="eyebrow">پیشنهاد بدون قیمت</span>
-                <h2>شماره تماس صفحات مقایسه</h2>
-                <p class="muted">این شماره حداکثر یک‌بار، کنار بالاترین پرووایدر بدون قیمت نمایش داده می‌شود.</p>
+                <h2>شماره تماس دسته‌بندی‌ها</h2>
+                <p class="muted">شماره مرتبط با دسته، کنار منبع بدون قیمت منتخب و دکمه «تماس بگیرید» نمایش داده می‌شود.</p>
             </div>
-            <label>شماره تماس
-                <input name="comparison_contact_phone" dir="ltr" value="{{ old('comparison_contact_phone', $comparisonContactPhone) }}" required maxlength="30">
-            </label>
-            <button class="button" type="submit">ذخیره شماره تماس</button>
+            <div class="category-contact-grid">
+                @foreach(config('comparison.categories') as $key => $item)
+                    <label>{{ $item['plural'] }}
+                        <input name="comparison_contact_phones[{{ $key }}]" dir="ltr" value="{{ old("comparison_contact_phones.{$key}", $comparisonContactPhones[$key]) }}" required maxlength="30">
+                    </label>
+                @endforeach
+            </div>
+            <button class="button" type="submit">ذخیره شماره‌های تماس</button>
         </form>
+
+        @if($contactOrderAgencies->isNotEmpty())
+            <form class="panel admin-form contact-source-order" method="post" action="{{ route('admin.agencies.contact-order') }}" data-contact-order-form>
+                @csrf @method('PUT')
+                <div class="contact-source-order-head">
+                    <div>
+                        <span class="eyebrow">کنترل منبع انتهای فهرست</span>
+                        <h2>ترتیب انتخاب «تماس بگیرید»</h2>
+                        <p class="muted">اولین منبع این فهرست که در صفحه قیمت ندارد، به‌عنوان آخرین پیشنهاد نمایش داده می‌شود. ردیف‌ها را جابه‌جا و سپس ذخیره کنید.</p>
+                    </div>
+                    <button class="button" type="submit">ذخیره ترتیب</button>
+                </div>
+                <ol class="contact-source-order-list" data-contact-order-list>
+                    @foreach($contactOrderAgencies as $agency)
+                        <li class="contact-source-order-row" draggable="true" data-contact-order-row>
+                            <input type="hidden" name="agencies[]" value="{{ $agency->id }}">
+                            <span class="contact-order-handle" aria-hidden="true">⋮⋮</span>
+                            <span class="contact-order-rank" data-contact-order-rank>{{ $loop->iteration }}</span>
+                            <span class="contact-order-name"><strong>{{ $agency->name }}</strong><small>{{ $agency->price_sources_count }} پیشنهاد</small></span>
+                            <span class="contact-order-actions">
+                                <button type="button" data-move="up" aria-label="انتقال {{ $agency->name }} به بالا">↑</button>
+                                <button type="button" data-move="down" aria-label="انتقال {{ $agency->name }} به پایین">↓</button>
+                            </span>
+                        </li>
+                    @endforeach
+                </ol>
+            </form>
+        @endif
 
         <form method="get" class="admin-table-search" role="search">
             <label><span class="sr-only">جست‌وجوی آژانس</span><input type="search" name="q" value="{{ request('q') }}" placeholder="جست‌وجو در نام، شماره تماس یا ایمیل…" maxlength="100"></label>
@@ -64,9 +96,8 @@
                             <label>نام منبع<input name="name" value="{{ old('name', $agency->name) }}" required maxlength="120"></label>
                             <label>شماره تماس اختصاصی<input type="tel" dir="ltr" name="contact_phone" value="{{ old('contact_phone', $agency->contact_phone) }}" placeholder="{{ $comparisonContactPhone }}"></label>
                         </div>
-                        <div class="form-grid thirds">
+                        <div class="form-grid">
                             <label>اولویت نمایش<input type="number" min="0" max="10000" name="display_priority" value="{{ $agency->display_priority }}" required><small>عدد کمتر، نمایش زودتر</small></label>
-                            <label>اولویت تماس<input type="number" min="0" max="100000" name="contact_priority" value="{{ $agency->contact_priority }}" required><small>برای منابع بدون قیمت</small></label>
                             <label>هزینه هر کلیک<input type="number" min="0" name="cost_per_click" value="{{ $agency->cost_per_click }}" required></label>
                         </div>
                         <label class="check-label"><input type="checkbox" name="is_contact_only" value="1" @checked($agency->is_contact_only)> همیشه به‌جای لینک خرید، شماره تماس نمایش داده شود</label>
@@ -118,3 +149,53 @@
         {{ $agencies->links() }}
     </section>
 @endsection
+
+@push('scripts')
+    <script>
+        (() => {
+            const list = document.querySelector('[data-contact-order-list]');
+            if (!list) return;
+
+            const refresh = () => {
+                const rows = [...list.querySelectorAll('[data-contact-order-row]')];
+                rows.forEach((row, index) => {
+                    row.querySelector('[data-contact-order-rank]').textContent = index + 1;
+                    row.querySelector('[data-move="up"]').disabled = index === 0;
+                    row.querySelector('[data-move="down"]').disabled = index === rows.length - 1;
+                });
+            };
+
+            list.addEventListener('click', event => {
+                const button = event.target.closest('[data-move]');
+                if (!button) return;
+                const row = button.closest('[data-contact-order-row]');
+                if (button.dataset.move === 'up' && row.previousElementSibling) {
+                    list.insertBefore(row, row.previousElementSibling);
+                } else if (button.dataset.move === 'down' && row.nextElementSibling) {
+                    list.insertBefore(row.nextElementSibling, row);
+                }
+                refresh();
+            });
+
+            let dragged;
+            list.addEventListener('dragstart', event => {
+                dragged = event.target.closest('[data-contact-order-row]');
+                dragged?.classList.add('is-dragging');
+            });
+            list.addEventListener('dragover', event => {
+                event.preventDefault();
+                const target = event.target.closest('[data-contact-order-row]');
+                if (!dragged || !target || dragged === target) return;
+                const rect = target.getBoundingClientRect();
+                list.insertBefore(dragged, event.clientY < rect.top + rect.height / 2 ? target : target.nextElementSibling);
+            });
+            list.addEventListener('dragend', () => {
+                dragged?.classList.remove('is-dragging');
+                dragged = null;
+                refresh();
+            });
+
+            refresh();
+        })();
+    </script>
+@endpush

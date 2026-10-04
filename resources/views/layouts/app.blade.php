@@ -62,20 +62,21 @@
                                 <a class="{{ request()->routeIs('mag.*') ? 'active' : '' }}" href="{{ route('mag.index').'/' }}">مگ</a>
                             </div>
                         </details>
-                        <details class="nav-menu {{ request()->routeIs('admin.tours.*', 'admin.comparison-sources.*', 'admin.agencies.*') ? 'active' : '' }}">
+                        <details class="nav-menu {{ request()->routeIs('admin.tours.*', 'admin.sources.*', 'admin.comparison-sources.*', 'admin.agencies.*') ? 'active' : '' }}">
                             <summary>مدیریت مقایسه</summary>
                             <div class="nav-dropdown">
-                                <a class="{{ request()->routeIs('admin.tours.*') ? 'active' : '' }}" href="{{ route('admin.tours.index') }}">صفحات مقایسه</a>
+                                <a class="{{ request()->routeIs('admin.tours.*', 'admin.sources.*') ? 'active' : '' }}" href="{{ route('admin.tours.index') }}">صفحات مقایسه</a>
                                 <a class="{{ request()->routeIs('admin.comparison-sources.*') ? 'active' : '' }}" href="{{ route('admin.comparison-sources.index') }}">منابع و کراولرها</a>
                                 <a class="{{ request()->routeIs('admin.agencies.*') ? 'active' : '' }}" href="{{ route('admin.agencies.index') }}">آژانس‌ها، اعتبار و تماس</a>
                             </div>
                         </details>
-                        <details class="nav-menu {{ request()->routeIs('admin.suggestions.*', 'admin.sync.*', 'admin.contact-requests.*') ? 'active' : '' }}">
+                        <details class="nav-menu {{ request()->routeIs('admin.suggestions.*', 'admin.sync.*', 'admin.contact-requests.*', 'admin.comparison-reports.*') ? 'active' : '' }}">
                             <summary>عملیات و پیگیری</summary>
                             <div class="nav-dropdown">
                                 <a class="{{ request()->routeIs('admin.suggestions.*') ? 'active' : '' }}" href="{{ route('admin.suggestions.index') }}">پیشنهادهای صفحات</a>
                                 <a class="{{ request()->routeIs('admin.sync.*') ? 'active' : '' }}" href="{{ route('admin.sync.index') }}">مرکز همگام‌سازی</a>
                                 <a class="{{ request()->routeIs('admin.contact-requests.*') ? 'active' : '' }}" href="{{ route('admin.contact-requests.index') }}">شماره‌ها و درخواست‌های تماس</a>
+                                <a class="{{ request()->routeIs('admin.comparison-reports.*') ? 'active' : '' }}" href="{{ route('admin.comparison-reports.index') }}">گزارش‌های کاربران</a>
                             </div>
                         </details>
                         <details class="nav-menu {{ request()->routeIs('admin.advertisements.*', 'admin.static-pages.*', 'admin.seo-redirects.*') ? 'active' : '' }}">

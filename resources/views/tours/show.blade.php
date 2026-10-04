@@ -145,6 +145,24 @@
                 @endforelse
             </div>
             <p class="comparison-note">قیمت‌ها ممکن است در سایت فروشنده تغییر کنند؛ مبلغ نهایی را پیش از خرید بررسی کنید.</p>
+            <details class="comparison-report-box" @if($errors->has('report_type') || $errors->has('report_details')) open @endif>
+                <summary>گزارش مشکل در این صفحه</summary>
+                <form action="{{ route('comparison-reports.store', $tour) }}" method="post">
+                    @csrf
+                    <div class="report-type-options">
+                        @foreach(\App\Models\ComparisonReport::TYPES as $value => $label)
+                            <label><input type="radio" name="report_type" value="{{ $value }}" @checked(old('report_type') === $value)> {{ $label }}</label>
+                        @endforeach
+                    </div>
+                    @error('report_type')<small class="field-error">{{ $message }}</small>@enderror
+                    <label class="report-details">توضیحات تکمیلی <small>(اختیاری)</small>
+                        <textarea name="report_details" rows="2" maxlength="1000" placeholder="مثلاً نام فروشنده یا بخشی که نیاز به اصلاح دارد">{{ old('report_details') }}</textarea>
+                    </label>
+                    @error('report_details')<small class="field-error">{{ $message }}</small>@enderror
+                    <input class="report-honeypot" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+                    <button class="button button-secondary" type="submit">ارسال گزارش</button>
+                </form>
+            </details>
             @if($offersBottomAd)
                 @include('advertisements._banner', ['advertisement' => $offersBottomAd, 'class' => 'tour-offers-ad'])
             @endif

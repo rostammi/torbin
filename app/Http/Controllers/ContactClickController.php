@@ -12,12 +12,12 @@ class ContactClickController extends Controller
 {
     public function __invoke(Request $request, PriceSource $source): Response
     {
-        $source->loadMissing('agency');
+        $source->loadMissing(['agency', 'tour']);
         abort_unless($source->is_active && ($source->is_contact_only || $source->latest_price <= 0), 404);
 
         $agencyPhone = trim((string) $source->contact_phone);
         $contactType = $agencyPhone !== '' ? ContactClick::TYPE_AGENCY : ContactClick::TYPE_GENERAL;
-        $phone = $agencyPhone !== '' ? $agencyPhone : SiteSetting::comparisonContactPhone();
+        $phone = $agencyPhone !== '' ? $agencyPhone : SiteSetting::comparisonContactPhone($source->tour?->category);
 
         ContactClick::create([
             'agency_id' => $source->agency_id,

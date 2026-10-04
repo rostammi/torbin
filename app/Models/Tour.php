@@ -100,6 +100,11 @@ class Tour extends Model
         return $this->hasMany(ContactClick::class);
     }
 
+    public function comparisonReports(): HasMany
+    {
+        return $this->hasMany(ComparisonReport::class);
+    }
+
     public function activePrices(): HasMany
     {
         return $this->priceSources()

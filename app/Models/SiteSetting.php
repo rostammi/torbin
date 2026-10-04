@@ -18,10 +18,22 @@ class SiteSetting extends Model
 
     protected $fillable = ['key', 'value'];
 
-    public static function comparisonContactPhone(): string
+    public static function comparisonContactPhone(?string $category = null): string
     {
+        if ($category && array_key_exists($category, config('comparison.categories', []))) {
+            $categoryPhone = static::query()->whereKey(self::contactPhoneKey($category))->value('value');
+            if (filled($categoryPhone)) {
+                return (string) $categoryPhone;
+            }
+        }
+
         return (string) (static::query()->whereKey(self::CONTACT_PHONE)->value('value')
             ?: self::DEFAULT_CONTACT_PHONE);
+    }
+
+    public static function contactPhoneKey(string $category): string
+    {
+        return self::CONTACT_PHONE.'.'.$category;
     }
 
     public static function phoneHref(string $phone): string

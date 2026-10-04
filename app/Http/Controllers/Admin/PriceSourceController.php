@@ -11,7 +11,9 @@ use App\Services\Discovery\ProviderCatalog;
 use App\Services\PriceCrawler;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class PriceSourceController extends Controller
 {
@@ -29,6 +31,77 @@ class PriceSourceController extends Controller
         $alerts->notifyForTour($tour);
 
         return back()->with('success', 'منبع قیمت اضافه شد؛ تنظیمات عمومی آن از صفحه منابع مرکزی مدیریت می‌شود.');
+    }
+
+    public function bulkCreate(): View
+    {
+        $tours = Tour::query()
+            ->orderBy('category')
+            ->orderBy('title')
+            ->get(['id', 'category', 'title', 'slug', 'is_active']);
+        $agencyNames = Agency::query()->orderBy('name')->pluck('name');
+
+        return view('admin.sources.bulk-create', compact('tours', 'agencyNames'));
+    }
+
+    public function bulkStore(Request $request): RedirectResponse
+    {
+        $target = $request->validate([
+            'target_mode' => ['required', Rule::in(['category', 'selected'])],
+            'target_category' => [
+                Rule::requiredIf($request->input('target_mode') === 'category'),
+                'nullable',
+                Rule::in(array_keys(config('comparison.categories'))),
+            ],
+            'tour_ids' => [
+                Rule::requiredIf($request->input('target_mode') === 'selected'),
+                'nullable',
+                'array',
+                'min:1',
+                'max:1000',
+            ],
+            'tour_ids.*' => ['required', 'integer', 'distinct', Rule::exists('tours', 'id')],
+        ]);
+        $sourceData = $this->validated($request);
+
+        $tours = Tour::query()
+            ->when(
+                $target['target_mode'] === 'category',
+                fn ($query) => $query->where('category', $target['target_category']),
+                fn ($query) => $query->whereKey($target['tour_ids'] ?? []),
+            )
+            ->orderBy('id')
+            ->get();
+
+        if ($tours->isEmpty()) {
+            return back()->withInput()->with('error', 'هیچ صفحهٔ مقایسه‌ای برای افزودن منبع انتخاب نشده است.');
+        }
+
+        $created = 0;
+        $skipped = 0;
+        DB::transaction(function () use ($tours, $sourceData, &$created, &$skipped) {
+            foreach ($tours as $tour) {
+                if ($tour->priceSources()->where('provider_name', $sourceData['provider_name'])->exists()) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $tour->priceSources()->create($sourceData);
+                $created++;
+            }
+        });
+
+        if ($created === 0) {
+            return back()->withInput()->with('error', "این منبع از قبل روی هر {$skipped} صفحهٔ انتخاب‌شده وجود دارد.");
+        }
+
+        $message = "منبع {$sourceData['provider_name']} به {$created} صفحهٔ مقایسه اضافه شد.";
+        if ($skipped > 0) {
+            $message .= " {$skipped} صفحه به‌دلیل وجود قبلی منبع بدون تغییر ماند.";
+        }
+
+        return redirect()->route('admin.tours.index')->with('success', $message);
     }
 
     public function update(Request $request, PriceSource $source, PriceAlertNotifier $alerts): RedirectResponse

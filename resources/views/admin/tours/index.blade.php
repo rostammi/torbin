@@ -11,6 +11,7 @@
                     @csrf
                     <button class="button button-secondary" type="submit">تبدیل عکس‌های قبلی سایت به WebP</button>
                 </form>
+                <a class="button button-secondary" href="{{ route('admin.sources.bulk.create', array_filter(['category' => $category])) }}">+ افزودن گروهی منبع</a>
                 <a class="button button-secondary" href="{{ route('admin.suggestions.index') }}">پیشنهادها</a>
                 <a class="button" href="{{ route('admin.tours.create', ['category' => $category]) }}">+ صفحه جدید</a>
             </div>

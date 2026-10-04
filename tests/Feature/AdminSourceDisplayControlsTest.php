@@ -132,6 +132,38 @@ class AdminSourceDisplayControlsTest extends TestCase
         $this->assertTrue($second->fresh()->is_featured);
     }
 
+    public function test_admin_controls_which_unpriced_source_is_shown_at_the_end_of_the_list(): void
+    {
+        $tour = $this->tour();
+        $priced = $tour->priceSources()->create([
+            'provider_name' => 'منبع دارای قیمت', 'source_url' => 'https://example.com/priced',
+            'extraction_type' => 'manual', 'latest_price' => 5_000_000, 'is_active' => true,
+        ]);
+        $priced->agency->update(['balance' => 100_000]);
+        $first = $tour->priceSources()->create([
+            'provider_name' => 'منبع تماس اول', 'source_url' => 'https://example.com/contact-first',
+            'extraction_type' => 'manual', 'latest_price' => null, 'is_active' => true,
+        ]);
+        $second = $tour->priceSources()->create([
+            'provider_name' => 'منبع تماس دوم', 'source_url' => 'https://example.com/contact-second',
+            'extraction_type' => 'manual', 'latest_price' => 0, 'is_active' => true,
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('admin.agencies.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['منبع تماس اول', 'منبع تماس دوم'])
+            ->assertSee('ترتیب انتخاب «تماس بگیرید»');
+
+        $this->put(route('admin.agencies.contact-order'), [
+            'agencies' => [$second->agency_id, $first->agency_id],
+        ])->assertRedirect();
+
+        $this->assertSame(10, $second->agency->fresh()->contact_priority);
+        $this->assertSame(20, $first->agency->fresh()->contact_priority);
+        $this->assertSame([$priced->id, $second->id], $tour->publicComparisonSources()->pluck('id')->all());
+    }
+
     private function tour(): Tour
     {
         return Tour::create([

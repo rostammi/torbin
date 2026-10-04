@@ -96,7 +96,7 @@ class HomeController extends Controller
         $views->track($tour, $request);
         $comparisonSources = $tour->publicComparisonSources();
         $tour->setRelation('priceSources', $comparisonSources);
-        $comparisonContactPhone = SiteSetting::comparisonContactPhone();
+        $comparisonContactPhone = SiteSetting::comparisonContactPhone($tour->category);
         $relatedComparisons = $related->for($tour);
 
         $historyQuery = PriceHistory::query()

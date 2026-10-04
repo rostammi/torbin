@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdvertisementController;
 use App\Http\Controllers\Admin\AgencyController;
 use App\Http\Controllers\Admin\ComparisonSourceController;
+use App\Http\Controllers\Admin\ComparisonReportController as AdminComparisonReportController;
 use App\Http\Controllers\Admin\ContactRequestController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LegacyRedirectController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Admin\TourSuggestionController;
 use App\Http\Controllers\AdvertisementClickController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContactClickController;
+use App\Http\Controllers\ComparisonReportController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OutboundClickController;
 use App\Http\Controllers\PriceAlertController;
@@ -53,6 +55,7 @@ Route::get('/accommodation/{tour}', [HomeController::class, 'show'])->defaults('
 Route::get('/visa/{tour}', [HomeController::class, 'show'])->defaults('category_key', 'visa')->name('visas.show');
 Route::get('/go/{source}', OutboundClickController::class)->middleware('throttle:30,1')->name('outbound.click');
 Route::post('/contact-click/{source}', ContactClickController::class)->middleware('throttle:60,1')->name('contact.click');
+Route::post('/comparisons/{tour}/reports', [ComparisonReportController::class, 'store'])->middleware('throttle:5,1')->name('comparison-reports.store');
 Route::get('/ads/{advertisement}/click', AdvertisementClickController::class)->middleware('throttle:60,1')->name('advertisements.click');
 Route::post('/tours/{tour}/price-alerts', [PriceAlertController::class, 'store'])->middleware('throttle:5,1')->name('price-alerts.store');
 Route::get('/price-alerts/unsubscribe/{token}', [PriceAlertController::class, 'unsubscribe'])->middleware('throttle:10,1')->name('price-alerts.unsubscribe');
@@ -89,8 +92,11 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
         Route::post('sync/{syncRun}/retry', [SyncController::class, 'retry'])->name('sync.retry');
         Route::get('contact-requests', [ContactRequestController::class, 'index'])->name('contact-requests.index');
         Route::put('contact-requests/{contactRequest}', [ContactRequestController::class, 'update'])->name('contact-requests.update');
+        Route::get('comparison-reports', [AdminComparisonReportController::class, 'index'])->name('comparison-reports.index');
+        Route::put('comparison-reports/{comparisonReport}', [AdminComparisonReportController::class, 'update'])->name('comparison-reports.update');
         Route::get('agencies', [AgencyController::class, 'index'])->name('agencies.index');
         Route::put('agencies/comparison-contact', [AgencyController::class, 'updateComparisonContact'])->name('agencies.comparison-contact');
+        Route::put('agencies/contact-order', [AgencyController::class, 'updateContactOrder'])->name('agencies.contact-order');
         Route::put('agencies/featured', [PriceSourceController::class, 'updateAgencyFeatured'])->name('agencies.featured');
         Route::put('agencies/{agency}', [AgencyController::class, 'update'])->name('agencies.update');
         Route::post('agencies/{agency}/balance', [AgencyController::class, 'adjustBalance'])->name('agencies.balance');
@@ -101,6 +107,8 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
         Route::post('tours/{tour}/upload-images', [AdminTourController::class, 'uploadImages'])->name('tours.upload-images');
         Route::put('tours/{tour}/reorder-images', [AdminTourController::class, 'reorderImages'])->name('tours.reorder-images');
         Route::post('tours/{tour}/refresh-images', [AdminTourController::class, 'refreshImages'])->name('tours.refresh-images');
+        Route::get('sources/bulk/create', [PriceSourceController::class, 'bulkCreate'])->name('sources.bulk.create');
+        Route::post('sources/bulk', [PriceSourceController::class, 'bulkStore'])->name('sources.bulk.store');
         Route::post('tours/{tour}/official-sources', [PriceSourceController::class, 'official'])->name('sources.official');
         Route::post('tours/{tour}/sources', [PriceSourceController::class, 'store'])->name('sources.store');
         Route::put('sources/{source}', [PriceSourceController::class, 'update'])->name('sources.update');
